@@ -32,21 +32,21 @@ namespace Script5
             List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             IMyTextSurface _plc_screen1;
-            string _door_name;
+            string _hangar_name;
             float _open_state;
             float _close_state;
             string roof_state = "Неопределено";
 
-            public HangarDoorControl(Program program, string door_name, float open_state = -90f, float close_state = 0f)
+            public HangarDoorControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f)
             {
                 _program = program;
-                _door_name = door_name;
+                _hangar_name = hangar_name;
                 _open_state = open_state;
                 _close_state = close_state;
                 _plc_screen1 = _program.Me.GetSurface(0);
                 IMyBlockGroup hangar_group;
 
-                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName("Ангар 2");
+                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(_hangar_name);
                 hangar_group.GetBlocksOfType(hangar_lights);
                 hangar_group.GetBlocksOfType(hangar_hinges);
                 hangar_group.GetBlocksOfType(hangar_doors);
@@ -83,14 +83,18 @@ namespace Script5
                 roof_state = "NA";
                 roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ЗАКРЫВАЮТСЯ" : roof_state;
                 roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ОТКРЫВАЮТСЯ" : roof_state;
-                roof_state = hangar_hinges.FindAll(hinge => RadToDeg(hinge.Angle) == _open_state).Count() == hangar_hinges.Count() ? "ОТКРЫТО" : roof_state;
-                roof_state = hangar_hinges.FindAll(hinge => RadToDeg(hinge.Angle) == _close_state).Count() == hangar_hinges.Count() ? "ЗАКРЫТО" : roof_state;
+                roof_state = hangar_hinges.FindAll(hinge => RadToDeg(hinge.Angle) <= _open_state + 0.2F && RadToDeg(hinge.Angle) >= _open_state - 0.2F).Count() == hangar_hinges.Count() ? "ОТКРЫТО" : roof_state;
+                roof_state = hangar_hinges.FindAll(hinge => RadToDeg(hinge.Angle) <= _close_state + 0.2F && RadToDeg(hinge.Angle) >= _close_state - 0.2F).Count() == hangar_hinges.Count() ? "ЗАКРЫТО" : roof_state;
 
             }
 
             public void ShowStatus()
             {
-                _plc_screen1.WriteText(String.Format("{0}\n{1}", roof_state, RadToDeg(hangar_hinges[0].Angle).ToString()), false);
+                _plc_screen1.WriteText(String.Format("{0}\n", roof_state), false);
+                foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
+                {
+                    _plc_screen1.WriteText(String.Format("{0}: {1}\n", hinge.CustomName, RadToDeg(hinge.Angle).ToString()), true);
+                }
                 foreach (IMyTextPanel display in hangar_displays)
                 {
                     switch (roof_state)
@@ -117,12 +121,54 @@ namespace Script5
                             break;
                     };
                 }
+
+                foreach (IMyInteriorLight light in hangar_lights)
+                {
+                    switch (roof_state)
+                    {
+                        case "ОТКРЫВАЮТСЯ":
+                            UpdateLed(light, Color.Yellow, true);
+                            break;
+                        case "ЗАКРЫВАЮТСЯ":
+                            UpdateLed(light, Color.Yellow, true);
+                            break;
+                        case "ОТКРЫТО":
+                            UpdateLed(light, Color.Green, false);
+                            break;
+                        case "ЗАКРЫТО":
+                            UpdateLed(light, Color.White, false);
+                            break;
+                        default:
+                            UpdateLed(light, Color.White, false);
+                            break;
+                    };
+                }
             }
 
             private static float RadToDeg(float rad_value)
             {
                 float deg_value = rad_value * 180f / 3.14159265359f;
                 return deg_value;
+            }
+
+            private static void UpdateLed(IMyInteriorLight light, Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
+            {
+                if (light.Color != color)
+                    light.Color = color;
+                if (blink == true)
+                {
+                    if (light.BlinkIntervalSeconds != blink_interval)
+                        light.BlinkIntervalSeconds = blink_interval;
+                    if (light.BlinkLength != blink_length)
+                        light.BlinkLength = blink_length;
+                }
+                else
+                { 
+                    if (light.BlinkIntervalSeconds != 0)
+                        light.BlinkIntervalSeconds = 0;
+                    if (light.BlinkLength != 0)
+                        light.BlinkLength = 0;
+                }
             }
 
             public void Monitoring()
