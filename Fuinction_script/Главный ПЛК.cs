@@ -78,6 +78,25 @@ namespace Script5
                     hinge.TargetVelocityRPM = RadToDeg(hinge.Angle) > 0f && hinge.Enabled ? -1f : 0f;
             }
 
+            public void ToggleRoof()
+            {
+                switch(roof_state)
+                {
+                    case "ОТКРЫТО":
+                        CloseRoof();
+                        break;
+                    case "ОТКРЫВАЮТСЯ":
+                        CloseRoof();
+                        break;
+                    case "ЗАКРЫТО":
+                        OpenRoof();
+                        break;
+                    case "ЗАКРЫВАЮТСЯ":
+                        OpenRoof();
+                        break;
+                }
+            }
+
             public void ToggleDoor()
             {
                 foreach (IMyAirtightHangarDoor door in hangar_doors)
@@ -173,21 +192,16 @@ namespace Script5
 
             private static void UpdateLed(IMyInteriorLight light, Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
             {
-                if (light.Color != color)
-                    light.Color = color;
+                if (light.Color != color) light.Color = color;
                 if (blink == true)
                 {
-                    if (light.BlinkIntervalSeconds != blink_interval)
-                        light.BlinkIntervalSeconds = blink_interval;
-                    if (light.BlinkLength != blink_length)
-                        light.BlinkLength = blink_length;
+                    if (light.BlinkIntervalSeconds != blink_interval) light.BlinkIntervalSeconds = blink_interval;
+                    if (light.BlinkLength != blink_length) light.BlinkLength = blink_length;
                 }
                 else
                 { 
-                    if (light.BlinkIntervalSeconds != 0)
-                        light.BlinkIntervalSeconds = 0;
-                    if (light.BlinkLength != 0)
-                        light.BlinkLength = 0;
+                    if (light.BlinkIntervalSeconds != 0) light.BlinkIntervalSeconds = 0;
+                    if (light.BlinkLength != 0) light.BlinkLength = 0;
                 }
             }
 
@@ -231,6 +245,9 @@ namespace Script5
                             break;
                         case "hangar2 toggle_light":
                             Hangar_door2.ToggleLights();
+                            break;
+                        case "hangar2 toggle_roof":
+                            Hangar_door2.ToggleRoof();
                             break;
                     }
                     break;
