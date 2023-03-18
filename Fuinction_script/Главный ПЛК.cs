@@ -18,6 +18,7 @@ using VRage.Game.ModAPI.Ingame.Utilities;
 using Sandbox.Game.Lights;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
+using VRage.Voxels.Mesh;
 
 namespace Script5
 {
@@ -65,19 +66,38 @@ namespace Script5
                     light.Enabled = light.Enabled ? false : true;
             }
 
-            public void OpenDoors()
+            public void OpenRoof()
             {
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
                     hinge.TargetVelocityRPM = RadToDeg(hinge.Angle) > -90f && hinge.Enabled ? 1f : 0f;
             }
 
-            public void CloseDoors()
+            public void CloseRoof()
             {
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
                     hinge.TargetVelocityRPM = RadToDeg(hinge.Angle) > 0f && hinge.Enabled ? -1f : 0f;
             }
 
-            public void CheckDoors()
+            public void ToggleDoor()
+            {
+                foreach (IMyAirtightHangarDoor door in hangar_doors)
+                    switch (door.Status)
+                    {
+                        case DoorStatus.Closed:
+                            door.OpenDoor();
+                            break;
+                        case DoorStatus.Open:
+                            door.CloseDoor();
+                            break;
+                        case DoorStatus.Opening:
+                            door.CloseDoor();
+                            break;
+                        case DoorStatus.Closing:
+                            door.OpenDoor();
+                            break;
+                    }
+            }
+            public void CheckRoof()
             {
 
                 roof_state = "NA";
@@ -173,7 +193,7 @@ namespace Script5
 
             public void Monitoring()
             {
-                CheckDoors();
+                CheckRoof();
                 ShowStatus();
             }
 
@@ -195,7 +215,27 @@ namespace Script5
 
         public void Main(string argument, UpdateType updateSource)
         {
-            Hangar_door2.Monitoring();
+            switch (updateSource)
+            {
+                case UpdateType.Update100:
+                    Hangar_door2.Monitoring();
+                    break;
+                case UpdateType.Terminal:
+                    Hangar_door2.ToggleDoor();
+                    break;
+                case UpdateType.Script:
+                    switch (argument)
+                    {
+                        case "hangar2 toggle_door":
+                            Hangar_door2.ToggleDoor();
+                            break;
+                        case "hangar2 toggle_light":
+                            Hangar_door2.ToggleLights();
+                            break;
+                    }
+                    break;
+            }
+            
         }
 
         //------------END--------------

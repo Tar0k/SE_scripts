@@ -14,7 +14,7 @@ using VRage.Game.ModAPI.Ingame;
 using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.GUI.TextPanel;
 
-namespace Script1
+namespace SE_scripts.tests
 {
     public sealed class Program : MyGridProgram
     {
@@ -185,7 +185,7 @@ namespace Script1
                 string current_output = (power_producers[i].CurrentOutput * 1000).ToString("N0");
                 string max_output = (power_producers[i].MaxOutput * 1000).ToString("N0");
                 string product_in_percentages = (power_producers[i].CurrentOutput / power_producers[i].MaxOutput * 100).ToString("N0");
-                text += String.Format("     {0}: {1}/{2} ({3}%) kW\n", name, current_output, max_output, product_in_percentages);
+                text += string.Format("     {0}: {1}/{2} ({3}%) kW\n", name, current_output, max_output, product_in_percentages);
             }
             return text;
         }
@@ -199,7 +199,7 @@ namespace Script1
                 string current_stored_power = (batteries[i].CurrentStoredPower * 1000).ToString("N0");
                 string max_stored_power = (batteries[i].MaxStoredPower * 1000).ToString("N0");
                 string product_in_percentages = (batteries[i].CurrentStoredPower / batteries[i].MaxStoredPower * 100).ToString("N0");
-                text += String.Format("     {0}: {1}/{2} ({3}%) kW\n", name, current_stored_power, max_stored_power, product_in_percentages);
+                text += string.Format("     {0}: {1}/{2} ({3}%) kW\n", name, current_stored_power, max_stored_power, product_in_percentages);
             }
             return text;
         }
@@ -211,7 +211,7 @@ namespace Script1
             {
                 string name = tanks[i].CustomName.Replace("__База__", "");
                 string filled_ratio = (tanks[i].FilledRatio * 100).ToString("N2");
-                text += String.Format("     {0}: {1}%\n", name, filled_ratio);
+                text += string.Format("     {0}: {1}%\n", name, filled_ratio);
             }
             return text;
         }

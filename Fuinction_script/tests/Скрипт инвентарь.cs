@@ -15,7 +15,7 @@ using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.GUI.TextPanel;
 using VRage;
 
-namespace Script2
+namespace SE_scripts.tests
 {
     public sealed class Program : MyGridProgram
     {
@@ -110,7 +110,7 @@ namespace Script2
                 {
                     if (!current_items.ContainsKey(container[k].Type.TypeId))
                     {
-                        ore_screen.WriteText(String.Format("!!!  ВНИМАНИЕ !!! \n Найдена новая сущность:  {0}\n", container[k].Type.TypeId), true);
+                        ore_screen.WriteText(string.Format("!!!  ВНИМАНИЕ !!! \n Найдена новая сущность:  {0}\n", container[k].Type.TypeId), true);
                         break;
                     }
 
@@ -173,22 +173,22 @@ namespace Script2
                     float value_kg = raw_value / 1000000;
                     if (value_kg < 999)
                     {
-                        result = String.Format("{0:N2} кг.", value_kg);
+                        result = string.Format("{0:N2} кг.", value_kg);
                     }
                     else if (value_kg >= 999 && value_kg < 1000000)
                     {
                         float value_t = value_kg / 1000;
-                        result = String.Format("{0:N2} тонн.", value_t);
+                        result = string.Format("{0:N2} тонн.", value_t);
                     }
                     else
                     {
                         float value_kt = value_kg / 1000000;
-                        result = String.Format("{0:N2} килотонн.", value_kt);
+                        result = string.Format("{0:N2} килотонн.", value_kt);
                     }
                     break;
                 case "item":
                     float value_parts = raw_value / 1000000;
-                    result = String.Format("{0:N2} штук.", value_parts.ToString());
+                    result = string.Format("{0:N2} штук.", value_parts.ToString());
                     break;
                 default:
                     result = "Неверный тип ввода";

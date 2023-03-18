@@ -16,7 +16,7 @@ using VRage.Game.GUI.TextPanel;
 using VRage;
 using VRage.Game.ModAPI.Ingame.Utilities;
 
-namespace Script3
+namespace SE_scripts.tests
 {
     public sealed class Program : MyGridProgram
     {
@@ -83,7 +83,7 @@ namespace Script3
             List<float> batteryLevels = (from b in StationBatteryBlocks
                                          let a = b.CurrentStoredPower
                                          select a).ToList();
-            float percent = ComputePercent(batteryLevels, (maxBatteryLevel * 3.0f));
+            float percent = ComputePercent(batteryLevels, maxBatteryLevel * 3.0f);
             List<double> hydrogenTankLevels = (from g in StationHydrogenTanks
                                                let a = g.FilledRatio
                                                select a).ToList();
@@ -112,7 +112,7 @@ namespace Script3
         public float ComputePercent(List<float> levels, float max)
         {
             float average = levels.Average();
-            return (average / max);
+            return average / max;
         }
 
         public float ComputeRange(List<float> levels)
@@ -150,12 +150,12 @@ namespace Script3
             float average = ComputeLevels(levels);
             float percent = ComputePercent(levels, maxBatteryLevel * 3.0f);
 
-            if (average <= (minBatteryLevel * 3.0f))
+            if (average <= minBatteryLevel * 3.0f)
             {
                 State = "Battery.Empty";
                 return true;
             }
-            else if (average >= (maxBatteryLevel * 3.0f))
+            else if (average >= maxBatteryLevel * 3.0f)
             {
                 State = "Battery.Full";
                 return false;

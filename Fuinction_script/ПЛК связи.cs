@@ -31,29 +31,41 @@ namespace Script6
         List<IMyAirtightHangarDoor> hangar2_doors = new List<IMyAirtightHangarDoor>();
         IMyTextSurface plc_screen0;
 
+        IMyProgrammableBlock main_plc;
+
         public Program()
         {
-            _broadCastTag = "Домик на озере";
-            Echo(_broadCastTag);
-            _myBroadcastListener = IGC.RegisterBroadcastListener(_broadCastTag);
-            _myBroadcastListener.SetMessageCallback(_broadCastTag);
+            plc_screen0 = Me.GetSurface(0);
+            main_plc = GridTerminalSystem.GetBlockWithName("Главный ПЛК") as IMyProgrammableBlock;
+            if (main_plc == null)
+            {
+                plc_screen0.WriteText("Не удалось найти программный блок\n с именем 'Главный ПЛК'\n", false);
+                return;
+            }
+
 
             hangar2_group = GridTerminalSystem.GetBlockGroupWithName("Ангар 2");
+            if (hangar2_group == null)
+            {
+                plc_screen0.WriteText("Не удалось найти группу\nc именем 'Ангар 2'\n", false);
+                return;
+            }
             hangar2_group.GetBlocksOfType(hangar2_lights);
             hangar2_group.GetBlocksOfType(hangar2_hinges);
             hangar2_group.GetBlocksOfType(hangar2_doors);
+            
+            
 
-            plc_screen0 = Me.GetSurface(0);
+            _broadCastTag = "Домик на озере";
+            _myBroadcastListener = IGC.RegisterBroadcastListener(_broadCastTag);
+            _myBroadcastListener.SetMessageCallback(_broadCastTag);
         }
-
 
 
         public void Save()
 
         {
         }
-
-
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -66,17 +78,10 @@ namespace Script6
                     if (myIGCMessage.Data is string)
                     {
                         Echo(myIGCMessage.Data.ToString());
-                        switch (myIGCMessage.Data.ToString())
+                        plc_screen0.WriteText(String.Format("{}\n", myIGCMessage.Data.ToString()), false);
+                        if (!main_plc.IsRunning && main_plc.Enabled)
                         {
-                            case "hangar2 toggle_light":
-                                hangar2_lights.ForEach(light => light.Enabled = !light.Enabled);
-                                break;
-                            case "hangar2 toggle_roof":
-                                hangar2_hinges.ForEach(hinge => hinge.TargetVelocityRPM = hinge.TargetVelocityRPM * -1);
-                                break;
-                            case "hangar2 toggle_door":
-                                hangar2_doors.ForEach(door => toggle_door(door));
-                                break;
+                            main_plc.TryRun(myIGCMessage.Data.ToString());
                         }
                     }
                     else if (myIGCMessage.Data is Vector3D)

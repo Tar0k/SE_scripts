@@ -16,7 +16,7 @@ using VRage.Game.GUI.TextPanel;
 using VRage;
 using VRage.Game.ModAPI.Ingame.Utilities;
 
-namespace Script4
+namespace SE_scripts.tests
 {
     public sealed class Program : MyGridProgram
     {
