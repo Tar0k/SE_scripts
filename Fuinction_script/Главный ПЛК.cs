@@ -76,11 +76,12 @@ namespace Script5
                 hangar_group.GetBlocksOfType(hangar_lights);
                 hangar_group.GetBlocksOfType(hangar_hinges);
                 hangar_group.GetBlocksOfType(hangar_doors);
+                hangar_group.GetBlocksOfType(hangar_displays);
 
                 //Пред. настройка дисплеев
                 foreach (IMyTextPanel display in hangar_displays)
                 {
-                    display.FontSize = 8.0f;
+                    display.FontSize = 4.0f;
                     display.Alignment = TextAlignment.CENTER;
                 }
                 // Первая операция контроля
@@ -153,7 +154,7 @@ namespace Script5
             }
 
             public void ShowStatus()
-                // Отобразить состояние н
+                // Отображение состояний на дисплеях и лампах.
             {
                 _plc_screen1.WriteText(String.Format("{0}\n", roof_state), false);
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
@@ -168,24 +169,29 @@ namespace Script5
                         switch (roof_state)
                         {
                             case "ОТКРЫВАЮТСЯ":
-                                display.WriteText("СТВОРКИ ОТКРЫВАЮТСЯ", false);
+                                display.WriteText("СТВОРКИ\n ОТКРЫВАЮТСЯ", false);
                                 display.BackgroundColor = Color.Yellow;
+                                display.FontColor = Color.Black;
                                 break;
                             case "ЗАКРЫВАЮТСЯ":
-                                display.WriteText("СТВОРКИ ЗАКРЫВАЮТСЯ", false);
+                                display.WriteText("СТВОРКИ\n ЗАКРЫВАЮТСЯ", false);
                                 display.BackgroundColor = Color.Yellow;
+                                display.FontColor = Color.Black;
                                 break;
                             case "ОТКРЫТО":
-                                display.WriteText("СТВОРКИ ОТКРЫТЫ", false);
+                                display.WriteText("СТВОРКИ\n ОТКРЫТЫ", false);
                                 display.BackgroundColor = Color.Green;
+                                display.FontColor = Color.White;
                                 break;
                             case "ЗАКРЫТО":
-                                display.WriteText("СТВОРКИ ЗАКРЫТЫ", false);
-                                display.BackgroundColor = Color.Red;
+                                display.WriteText("СТВОРКИ\n ЗАКРЫТЫ", false);
+                                display.BackgroundColor = Color.Black;
+                                display.FontColor = Color.White;
                                 break;
                             default:
-                                display.WriteText("СТВОРКИ НЕОПРЕДЕЛЕНО", false);
+                                display.WriteText("СТВОРКИ\n НЕОПРЕДЕЛЕНО", false);
                                 display.BackgroundColor = Color.Orange;
+                                display.FontColor = Color.White;
                                 break;
                         };
                     }
@@ -214,7 +220,7 @@ namespace Script5
                 {
                     foreach (IMyTextPanel display in hangar_displays)
                     {
-                        display.WriteText("ВНИМАНИЕ!!!\nОБНАРУЖЕНА БОЕГОЛОВКА!", false);
+                        display.WriteText("!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", false);
                         display.BackgroundColor = Color.Red;
                     }
                     foreach (IMyInteriorLight light in hangar_lights)
