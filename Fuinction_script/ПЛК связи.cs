@@ -25,12 +25,7 @@ namespace Script6
         //------------BEGIN--------------
         IMyBroadcastListener _myBroadcastListener;
         string _broadCastTag;
-        IMyBlockGroup hangar2_group;
-        List<IMyInteriorLight> hangar2_lights = new List<IMyInteriorLight>();
-        List<IMyMotorAdvancedStator> hangar2_hinges = new List<IMyMotorAdvancedStator>();
-        List<IMyAirtightHangarDoor> hangar2_doors = new List<IMyAirtightHangarDoor>();
         IMyTextSurface plc_screen0;
-
         IMyProgrammableBlock main_plc;
 
         public Program()
@@ -39,22 +34,10 @@ namespace Script6
             main_plc = GridTerminalSystem.GetBlockWithName("Главный ПЛК") as IMyProgrammableBlock;
             if (main_plc == null)
             {
-                plc_screen0.WriteText("Не удалось найти программный блок\n с именем 'Главный ПЛК'\n", false);
+                plc_screen0.WriteText("Не удалось найти программный блок\n с именем Главный ПЛК\n", false);
                 return;
             }
 
-
-            hangar2_group = GridTerminalSystem.GetBlockGroupWithName("Ангар 2");
-            if (hangar2_group == null)
-            {
-                plc_screen0.WriteText("Не удалось найти группу\nc именем 'Ангар 2'\n", false);
-                return;
-            }
-            hangar2_group.GetBlocksOfType(hangar2_lights);
-            hangar2_group.GetBlocksOfType(hangar2_hinges);
-            hangar2_group.GetBlocksOfType(hangar2_doors);
-            
-            
 
             _broadCastTag = "Домик на озере";
             _myBroadcastListener = IGC.RegisterBroadcastListener(_broadCastTag);
@@ -78,7 +61,7 @@ namespace Script6
                     if (myIGCMessage.Data is string)
                     {
                         Echo(myIGCMessage.Data.ToString());
-                        plc_screen0.WriteText(String.Format("{}\n", myIGCMessage.Data.ToString()), false);
+                        plc_screen0.WriteText(String.Format("{0}\n", myIGCMessage.Data.ToString()), false);
                         if (!main_plc.IsRunning && main_plc.Enabled)
                         {
                             main_plc.TryRun(myIGCMessage.Data.ToString());
@@ -95,27 +78,6 @@ namespace Script6
                     }
                 }
             }
-        }
-
-        private static void toggle_door(IMyAirtightHangarDoor door)
-        {
-            switch (door.Status)
-            {
-                case DoorStatus.Closed:
-                    door.OpenDoor();
-                    break;
-                case DoorStatus.Open:
-                    door.CloseDoor();
-                    break;
-                case DoorStatus.Opening:
-                    door.CloseDoor();
-                    break;
-                case DoorStatus.Closing:
-                    door.OpenDoor(); ;
-                    break;
-            }
-
-
         }
         //------------END--------------
     }

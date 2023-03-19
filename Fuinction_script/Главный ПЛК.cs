@@ -99,14 +99,14 @@ namespace Script5
                 // Открыть крышу
             {
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
-                    hinge.TargetVelocityRPM = RadToDeg(hinge.Angle) > -90f && hinge.Enabled ? 1f : 0f;
+                    hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0;
             }
 
             public void CloseRoof()
                 // Закрыть крышу
             {
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
-                    hinge.TargetVelocityRPM = RadToDeg(hinge.Angle) > 0f && hinge.Enabled ? -1f : 0f;
+                    hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0;
             }
 
             public void ToggleRoof()
@@ -116,10 +116,12 @@ namespace Script5
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
+
                         CloseRoof();
                         break;
                     case "ЗАКРЫТО":
                     case "ЗАКРЫВАЮТСЯ":
+                        _program.Echo("2");
                         OpenRoof();
                         break;
                 }
@@ -159,7 +161,7 @@ namespace Script5
                 _plc_screen1.WriteText(String.Format("{0}\n", roof_state), false);
                 foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
                 {
-                    _plc_screen1.WriteText(String.Format("{0}: {1}\n", hinge.CustomName, RadToDeg(hinge.Angle).ToString()), true);
+                    _plc_screen1.WriteText(String.Format("{0}: {1}\n", hinge.CustomName, Math.Round(RadToDeg(hinge.Angle), 0).ToString()), true);
                 }
 
                 if (!alarm_mode)
