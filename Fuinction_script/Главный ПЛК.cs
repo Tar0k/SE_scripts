@@ -65,7 +65,7 @@ namespace Script5
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
             IMyTextSurface _plc_screen1;
-            IMyTextPanel debug_display;
+            IMyTextPanel? debug_display;
 
 
             string _hangar_name;
@@ -178,54 +178,47 @@ namespace Script5
             // Отображение состояний на дисплеях и лампах.
             {
                 ShowRoofState(_plc_screen1, hangar_hinges, roof_state);
-
-                if (!alarm_mode)
+                switch (roof_state)
                 {
-                    switch (roof_state)
-                    {
-                        case "ОТКРЫВАЮТСЯ":
-                            UpdateDisplays(hangar_displays, "СТВОРКИ\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
-                            UpdateLights(hangar_lights, Color.Yellow, true);
-                            break;
-                        case "ЗАКРЫВАЮТСЯ":
-                            UpdateDisplays(hangar_displays, "СТВОРКИ\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
-                            UpdateLights(hangar_lights, Color.Yellow, true);
-                            break;
-                        case "ОТКРЫТО":
-                            UpdateDisplays(hangar_displays, "СТВОРКИ\n ОТКРЫТЫ", Color.Green, Color.White);
-                            UpdateLights(hangar_lights, Color.Green, false);
-                            break;
-                        case "ЗАКРЫТО":
-                            UpdateDisplays(hangar_displays, "СТВОРКИ\n ЗАКРЫТЫ", Color.Black, Color.White);
-                            UpdateLights(hangar_lights, Color.White, false);
-                            break;
-                        default:
-                            UpdateDisplays(hangar_displays, "СТВОРКИ\n НЕОПРЕДЕЛЕНО", Color.Orange, Color.White);
-                            UpdateLights(hangar_lights, Color.White, false);
-                            break;
-                    };
+                    case "ОТКРЫВАЮТСЯ":
+                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ОТКРЫВАЮТСЯ", _hangar_name), Color.Yellow, Color.Black);
+                        UpdateLights(hangar_lights, Color.Yellow, true);
+                        break;
+                    case "ЗАКРЫВАЮТСЯ":
+                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ЗАКРЫВАЮТСЯ", _hangar_name), Color.Yellow, Color.Black);
+                        UpdateLights(hangar_lights, Color.Yellow, true);
+                        break;
+                    case "ОТКРЫТО":
+                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ОТКРЫТЫ", _hangar_name), Color.Green, Color.White);
+                        UpdateLights(hangar_lights, Color.Green, false);
+                        break;
+                    case "ЗАКРЫТО":
+                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ЗАКРЫТЫ", _hangar_name), Color.Black, Color.White);
+                        UpdateLights(hangar_lights, Color.White, false);
+                        break;
+                    default:
+                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n НЕ ОПРЕДЕЛЕНО", _hangar_name), Color.Orange, Color.White);
+                        UpdateLights(hangar_lights, Color.White, false);
+                        break;
+                };
+            }
 
-                }
-                else
+            public void ShowAlarm()
+            {
+                UpdateDisplays(hangar_displays, "!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", Color.Red, Color.White);
+                UpdateLights(hangar_lights, Color.Red, true);
+
+                if (_mem_alarm_mode == false)
                 {
-                    UpdateDisplays(hangar_displays, "!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", Color.Red, Color.White);
-                    UpdateLights(hangar_lights, Color.Red, true);
 
-                    if (_mem_alarm_mode == false)
+                    foreach (IMySoundBlock speaker in hangar_speakers)
                     {
-                        
-						foreach (IMySoundBlock speaker in hangar_speakers)
-						{
-                            speaker.SelectedSound = "SoundBlockAlert2";
-                            speaker.LoopPeriod = 5;
-                            speaker.Play();
-						}
-						
-
-
+                        speaker.SelectedSound = "SoundBlockAlert2";
+                        speaker.LoopPeriod = 5;
+                        speaker.Play();
                     }
                 }
-                _mem_alarm_mode = alarm_mode;
+
             }
 
             private static float RadToDeg(float rad_value)
@@ -286,7 +279,15 @@ namespace Script5
             // Циклическая рутина контроля состояний и отображения статусов
             {
                 CheckRoof();
-                ShowStatus();
+                if (alarm_mode)
+                {
+                    ShowAlarm();
+                }
+                else
+                {
+                    ShowStatus();
+                }
+                _mem_alarm_mode = alarm_mode;
             }
 
         }
@@ -316,8 +317,12 @@ namespace Script5
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     alarm_system.detect_alarms();
+                    Hangar1.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Hangar1.Monitoring();
                     Hangar2.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
                     Hangar2.Monitoring();
+                    Hangar3.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Hangar3.Monitoring();
                     break;
                 case UpdateType.Terminal:
                     // Выполняется при "Выполнить" через терминал
