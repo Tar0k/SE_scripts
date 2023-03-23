@@ -65,7 +65,7 @@ namespace Script5
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
             IMyTextSurface _plc_screen1;
-            IMyTextPanel? debug_display;
+            IMyTextPanel debug_display;
 
 
             string _hangar_name;
@@ -102,6 +102,7 @@ namespace Script5
                 {
                     display.FontSize = 4.0f;
                     display.Alignment = TextAlignment.CENTER;
+                    display.TextPadding = 15;
                 }
                 // Первая операция контроля
                 this.Monitoring();
@@ -135,12 +136,10 @@ namespace Script5
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
-
                         CloseRoof();
                         break;
                     case "ЗАКРЫТО":
                     case "ЗАКРЫВАЮТСЯ":
-                        _program.Echo("2");
                         OpenRoof();
                         break;
                 }
@@ -331,6 +330,15 @@ namespace Script5
                     // Выполняется по запросу от другого программируемого блока
                     switch (argument)
                     {
+                        case "hangar1 toggle_door":
+                            Hangar1.ToggleDoor();
+                            break;
+                        case "hangar1 toggle_light":
+                            Hangar1.ToggleLights();
+                            break;
+                        case "hangar1 toggle_roof":
+                            Hangar1.ToggleRoof();
+                            break;
                         case "hangar2 toggle_door":
                             Hangar2.ToggleDoor();
                             break;
@@ -340,12 +348,20 @@ namespace Script5
                         case "hangar2 toggle_roof":
                             Hangar2.ToggleRoof();
                             break;
+                        case "hangar3 toggle_door":
+                            Hangar3.ToggleDoor();
+                            break;
+                        case "hangar3 toggle_light":
+                            Hangar3.ToggleLights();
+                            break;
+                        case "hangar3 toggle_roof":
+                            Hangar3.ToggleRoof();
+                            break;
                     }
                     break;
             }
 
         }
-
         //------------END--------------
     }
 }
