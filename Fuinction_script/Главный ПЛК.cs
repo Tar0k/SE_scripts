@@ -75,6 +75,7 @@ namespace Script5
             bool _mem_alarm_mode = false;
             bool _has_door = false;
             bool _has_roof = false;
+            int _alarm_timer = 0;
             string roof_state = "Неопределено";
             string door_state = "Неопределено";
 
@@ -84,8 +85,8 @@ namespace Script5
                 _hangar_name = hangar_name; // Имя группы устройств в ангаре, например "Ангар 1".
                 _open_state = open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
                 _close_state = close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
-                _has_door = has_door;
-                _has_roof = has_roof;
+                _has_door = has_door; // Идентификатор наличия ворот
+                _has_roof = has_roof;  // Идентификатор наличия крыши
                 _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
                 debug_display = _program.GridTerminalSystem.GetBlockWithName("debug_display") as IMyTextPanel; // Дисплей для отладки
                 if (debug_display == null)
@@ -133,15 +134,13 @@ namespace Script5
             public void OpenRoof()
             // Открыть крышу
             {
-                foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
-                    hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0;
+                hangar_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0);
             }
 
             public void CloseRoof()
             // Закрыть крышу
             {
-                foreach (IMyMotorAdvancedStator hinge in hangar_hinges)
-                    hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0;
+                hangar_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0);
             }
 
             public void ToggleRoof()
@@ -215,7 +214,6 @@ namespace Script5
             public void ShowStatus(string block_state, string block_name)
             // Отображение состояний на дисплеях и лампах.
             {
-                //ShowRoofState(_plc_screen1, hangar_hinges, roof_state);
                 switch (block_state)
                 {
                     case "ОТКРЫВАЮТСЯ":
@@ -242,21 +240,56 @@ namespace Script5
             }
 
             public void ShowAlarm()
+            // Отображение тревоги на дисплее и лампах
             {
                 UpdateDisplays(hangar_displays, "!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", Color.Red, Color.White);
                 UpdateLights(hangar_lights, Color.Red, true);
 
+                // Первый запуск тревоги
                 if (_mem_alarm_mode == false)
                 {
-
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
-                        speaker.SelectedSound = "SoundBlockAlert2";
-                        speaker.LoopPeriod = 5;
+                        speaker.SelectedSound = "Weapon31";
+                        speaker.LoopPeriod = 3;
                         speaker.Play();
                     }
                 }
+                _alarm_timer += 1; // Тик в 1.5 сек
 
+                // Раз в 10 тиков. Описание тревоги
+                if (_alarm_timer % 10 == 0)
+                {
+                    foreach (IMySoundBlock speaker in hangar_speakers)
+                    {
+                        speaker.Stop();
+                        speaker.SelectedSound = "Weapon31";
+                        speaker.LoopPeriod = 3;
+                        speaker.Play();
+                    }
+                }
+                // Пищалка тревоги
+                else if (_alarm_timer % 1 == 0)
+                {
+                    foreach (IMySoundBlock speaker in hangar_speakers)
+                    {
+                        if (speaker.SelectedSound == "Weapon31")
+                        {
+                            speaker.Stop();
+                            speaker.SelectedSound = "SoundBlockAlert2";
+                            speaker.LoopPeriod = 60;
+                            speaker.Play();
+                        }
+                        
+                    }
+                }
+            }
+
+            public void DisableAlarm()
+            // Отключение тревоги
+            {
+                _alarm_timer = 0;
+                hangar_speakers.ForEach(speaker => speaker.Stop());
             }
 
             private static float RadToDeg(float rad_value)
@@ -359,6 +392,10 @@ namespace Script5
                     if (_has_roof) ShowStatus(roof_state, "СТВОРКИ");
                     else if (_has_door) ShowStatus(door_state, "ВОРОТА");
                 }
+
+                if (!alarm_mode && _mem_alarm_mode) DisableAlarm();
+
+
                 _mem_alarm_mode = alarm_mode;
             }
 
@@ -372,8 +409,8 @@ namespace Script5
 
         public Program()
         {
-            Hangar1 = new HangarControl(this, "Ангар 1", has_door:true);
-            Hangar2 = new HangarControl(this, "Ангар 2", has_door:true, has_roof: true);
+            Hangar1 = new HangarControl(this, "Ангар 1", has_door: true);
+            Hangar2 = new HangarControl(this, "Ангар 2", has_door: true, has_roof: true);
             Hangar3 = new HangarControl(this, "Ангар 3", has_door: true);
             Production = new HangarControl(this, "Производство");
             alarm_system = new AlarmSystem(this);
@@ -437,7 +474,6 @@ namespace Script5
                     }
                     break;
             }
-
         }
         //------------END--------------
     }
