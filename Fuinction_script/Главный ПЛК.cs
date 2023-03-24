@@ -59,7 +59,7 @@ namespace Script5
              * Выполняет управление и мониторинг состояния блоков
              */
             Program _program;
-            List<IMyInteriorLight> hangar_lights = new List<IMyInteriorLight>();
+            List<IMyLightingBlock> hangar_lights = new List<IMyLightingBlock>();
             List<IMyMotorAdvancedStator> hangar_hinges = new List<IMyMotorAdvancedStator>();
             List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
@@ -73,14 +73,19 @@ namespace Script5
             float _close_state;
             public bool alarm_mode = false;
             bool _mem_alarm_mode = false;
+            bool _has_door = false;
+            bool _has_roof = false;
             string roof_state = "Неопределено";
+            string door_state = "Неопределено";
 
-            public HangarControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f)
+            public HangarControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f, bool has_door = false, bool has_roof = false)
             {
                 _program = program; //Ссылка на основную программу для возможности использовать GridTerminalSystem
                 _hangar_name = hangar_name; // Имя группы устройств в ангаре, например "Ангар 1".
                 _open_state = open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
                 _close_state = close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
+                _has_door = has_door;
+                _has_roof = has_roof;
                 _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
                 debug_display = _program.GridTerminalSystem.GetBlockWithName("debug_display") as IMyTextPanel; // Дисплей для отладки
                 if (debug_display == null)
@@ -104,6 +109,16 @@ namespace Script5
                     display.Alignment = TextAlignment.CENTER;
                     display.TextPadding = 15;
                 }
+
+                foreach (IMyLightingBlock light in hangar_lights)
+                {
+                    light.BlinkIntervalSeconds = 0;
+                    light.BlinkLength = 0;
+                    light.Intensity = 10;
+                    light.Radius = 20;
+                    light.Color = Color.White;
+                }
+
                 // Первая операция контроля
                 this.Monitoring();
             }
@@ -111,7 +126,7 @@ namespace Script5
             public void ToggleLights()
             // Вкл./Выкл. свет в ангаре
             {
-                foreach (IMyInteriorLight light in hangar_lights)
+                foreach (IMyLightingBlock light in hangar_lights)
                     light.Enabled = light.Enabled ? false : true;
             }
 
@@ -145,6 +160,30 @@ namespace Script5
                 }
             }
 
+            public void CheckRoof()
+            // Проверить состояние крыши на откр. или закр. и т.д.
+            {
+
+                roof_state = "NA";
+                roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ЗАКРЫВАЮТСЯ" : roof_state;
+                roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ОТКРЫВАЮТСЯ" : roof_state;
+                roof_state = hangar_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _open_state).Count() == hangar_hinges.Count() ? "ОТКРЫТО" : roof_state;
+                roof_state = hangar_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count() == hangar_hinges.Count() ? "ЗАКРЫТО" : roof_state;
+            }
+
+            public void OpenDoor()
+            // Откр. дверь
+            {
+                hangar_doors.ForEach(door => door.OpenDoor());
+            }
+
+            public void CloseDoor()
+            // Закр. дверь
+            {
+                hangar_doors.ForEach(door => door.CloseDoor());
+            }
+
+
             public void ToggleDoor()
             // Откр./Закр. дверь
             {
@@ -161,42 +200,42 @@ namespace Script5
                             break;
                     }
             }
-            public void CheckRoof()
-            // Проверить состояние крыши на откр. или закр. и т.д.
+
+            public void CheckDoor()
+            // Проверить состояние двери на откр. или закр. и т.д.
             {
+                door_state = "NA";
 
-                roof_state = "NA";
-                roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ЗАКРЫВАЮТСЯ" : roof_state;
-                roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ОТКРЫВАЮТСЯ" : roof_state;
-                roof_state = hangar_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _open_state).Count() == hangar_hinges.Count() ? "ОТКРЫТО" : roof_state;
-                roof_state = hangar_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count() == hangar_hinges.Count() ? "ЗАКРЫТО" : roof_state;
-
+                door_state = hangar_doors.FindAll(door => door.Status == DoorStatus.Closing).Count() == hangar_doors.Count() ? "ЗАКРЫВАЮТСЯ" : door_state;
+                door_state = hangar_doors.FindAll(door => door.Status == DoorStatus.Opening).Count() == hangar_doors.Count() ? "ОТКРЫВАЮТСЯ" : door_state;
+                door_state = hangar_doors.FindAll(door => door.Status == DoorStatus.Open).Count() == hangar_doors.Count() ? "ОТКРЫТО" : door_state;
+                door_state = hangar_doors.FindAll(door => door.Status == DoorStatus.Closed).Count() == hangar_doors.Count() ? "ЗАКРЫТО" : door_state;
             }
 
-            public void ShowStatus()
+            public void ShowStatus(string block_state, string block_name)
             // Отображение состояний на дисплеях и лампах.
             {
-                ShowRoofState(_plc_screen1, hangar_hinges, roof_state);
-                switch (roof_state)
+                //ShowRoofState(_plc_screen1, hangar_hinges, roof_state);
+                switch (block_state)
                 {
                     case "ОТКРЫВАЮТСЯ":
-                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ОТКРЫВАЮТСЯ", _hangar_name), Color.Yellow, Color.Black);
+                        UpdateDisplays(hangar_displays, string.Format("{0}\n{1}\n ОТКРЫВАЮТСЯ", _hangar_name, block_name), Color.Yellow, Color.Black);
                         UpdateLights(hangar_lights, Color.Yellow, true);
                         break;
                     case "ЗАКРЫВАЮТСЯ":
-                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ЗАКРЫВАЮТСЯ", _hangar_name), Color.Yellow, Color.Black);
+                        UpdateDisplays(hangar_displays, string.Format("{0}\n{1}\n ЗАКРЫВАЮТСЯ", _hangar_name, block_name), Color.Yellow, Color.Black);
                         UpdateLights(hangar_lights, Color.Yellow, true);
                         break;
                     case "ОТКРЫТО":
-                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ОТКРЫТЫ", _hangar_name), Color.Green, Color.White);
+                        UpdateDisplays(hangar_displays, string.Format("{0}\n{1}\n ОТКРЫТЫ", _hangar_name, block_name), Color.Green, Color.White);
                         UpdateLights(hangar_lights, Color.Green, false);
                         break;
                     case "ЗАКРЫТО":
-                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n ЗАКРЫТЫ", _hangar_name), Color.Black, Color.White);
+                        UpdateDisplays(hangar_displays, string.Format("{0}\n{1}\n ЗАКРЫТЫ", _hangar_name, block_name), Color.Black, Color.White);
                         UpdateLights(hangar_lights, Color.White, false);
                         break;
                     default:
-                        UpdateDisplays(hangar_displays, string.Format("{0}\nСТВОРКИ\n НЕ ОПРЕДЕЛЕНО", _hangar_name), Color.Orange, Color.White);
+                        UpdateDisplays(hangar_displays, string.Format("{0}\n{1}\n НЕ ОПРЕДЕЛЕНО", _hangar_name, block_name), Color.Orange, Color.White);
                         UpdateLights(hangar_lights, Color.White, false);
                         break;
                 };
@@ -226,10 +265,10 @@ namespace Script5
                 return rad_value * 180f / 3.14159265359f;
             }
 
-            private void UpdateLights(List<IMyInteriorLight> lights, Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
+            private void UpdateLights(List<IMyLightingBlock> lights, Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
             // Обновление цвета ламп и режима моргания
             {
-                foreach (IMyInteriorLight light in lights)
+                foreach (IMyLightingBlock light in lights)
                 {
                     if (light.Color != color) light.Color = color;
                     if (blink == true)
@@ -274,17 +313,51 @@ namespace Script5
                 }
             }
 
+            private static void ShowDoorState(IMyTextPanel display, List<IMyAirtightHangarDoor> doors, string door_state)
+            {
+                display.WriteText(String.Format("{0}\n", door_state), false);
+                foreach (IMyAirtightHangarDoor door in doors)
+                {
+                    display.WriteText(String.Format("{0}: {1}\n", door.CustomName, door.Status), true);
+                }
+            }
+
+            private static void ShowDoorState(IMyTextSurface display, List<IMyAirtightHangarDoor> doors, string door_state)
+            {
+                display.WriteText(String.Format("{0}\n", door_state), false);
+                foreach (IMyAirtightHangarDoor door in doors)
+                {
+                    display.WriteText(String.Format("{0}: {1}\n", door.CustomName, door.Status), true);
+                }
+            }
+
+            public void ShowOnDisplay(IMyTextPanel display)
+            {
+                if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
+                else if (_has_door) ShowDoorState(display, hangar_doors, door_state);
+            }
+
+            public void ShowOnDisplay(IMyTextSurface display)
+            {
+                if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
+                else if (_has_door) ShowDoorState(display, hangar_doors, door_state);
+            }
+
+
             public void Monitoring()
             // Циклическая рутина контроля состояний и отображения статусов
             {
-                CheckRoof();
+                if (_has_roof) CheckRoof();
+                if (_has_door) CheckDoor();
+                //ShowOnDisplay(_plc_screen1);
                 if (alarm_mode)
                 {
                     ShowAlarm();
                 }
                 else
                 {
-                    ShowStatus();
+                    if (_has_roof) ShowStatus(roof_state, "СТВОРКИ");
+                    else if (_has_door) ShowStatus(door_state, "ВОРОТА");
                 }
                 _mem_alarm_mode = alarm_mode;
             }
@@ -294,13 +367,15 @@ namespace Script5
         HangarControl Hangar1;
         HangarControl Hangar2;
         HangarControl Hangar3;
+        HangarControl Production;
         AlarmSystem alarm_system;
 
         public Program()
         {
-            Hangar1 = new HangarControl(this, "Ангар 1");
-            Hangar2 = new HangarControl(this, "Ангар 2");
-            Hangar3 = new HangarControl(this, "Ангар 3");
+            Hangar1 = new HangarControl(this, "Ангар 1", has_door:true);
+            Hangar2 = new HangarControl(this, "Ангар 2", has_door:true, has_roof: true);
+            Hangar3 = new HangarControl(this, "Ангар 3", has_door: true);
+            Production = new HangarControl(this, "Производство");
             alarm_system = new AlarmSystem(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -322,6 +397,8 @@ namespace Script5
                     Hangar2.Monitoring();
                     Hangar3.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
                     Hangar3.Monitoring();
+                    Production.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Production.Monitoring();
                     break;
                 case UpdateType.Terminal:
                     // Выполняется при "Выполнить" через терминал
