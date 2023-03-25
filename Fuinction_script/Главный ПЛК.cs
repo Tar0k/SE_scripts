@@ -45,13 +45,23 @@ namespace Script5
                 warhead_detected = warheads.Count > 0 ? true : false;
                 return warhead_detected;
             }
+            // TODO: Метод на поднятие тревоги если у турелей цель
 
+            // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе
+
+            // TODO: Метод на автоматическое выключение боеголовок если такие имеются и работают
+
+            // TODO: Метод на поиск повреждений критически важных узлов
             public void detect_alarms()
             {
                 current_alarms.Clear();
                 if (detect_warheads()) current_alarms.Add("Боеголовка");
+
+                // TODO: Изменить, чтобы возвращало не просто список, но и место, где возникла тревога если можно определить
             }
         }
+
+        // TODO: Написать класс, который описывал объекты в производственном секторе
 
         public class HangarControl
         {
@@ -162,7 +172,6 @@ namespace Script5
             public void CheckRoof()
             // Проверить состояние крыши на откр. или закр. и т.д.
             {
-
                 roof_state = "NA";
                 roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ЗАКРЫВАЮТСЯ" : roof_state;
                 roof_state = hangar_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count() == hangar_hinges.Count() ? "ОТКРЫВАЮТСЯ" : roof_state;
@@ -241,6 +250,7 @@ namespace Script5
 
             public void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
+            // TODO: Добавить возможность показывать текст тревоги в зависимости от тревоги и упростить по возможности
             {
                 UpdateDisplays(hangar_displays, "!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", Color.Red, Color.White);
                 UpdateLights(hangar_lights, Color.Red, true);
@@ -328,6 +338,7 @@ namespace Script5
                 }
             }
 
+            // TODO: Придумать, как использовать один метод вместо 2-х ShowRoofState почти одинаковых прегрузок
             private static void ShowRoofState(IMyTextSurface display, List<IMyMotorAdvancedStator> hinges, string roof_state)
             {
                 display.WriteText(String.Format("{0}\n", roof_state), false);
@@ -346,6 +357,7 @@ namespace Script5
                 }
             }
 
+            // TODO: Придумать, как использовать один метод вместо 2-х ShowDoorState почти одинаковых прегрузок
             private static void ShowDoorState(IMyTextPanel display, List<IMyAirtightHangarDoor> doors, string door_state)
             {
                 display.WriteText(String.Format("{0}\n", door_state), false);
@@ -364,12 +376,14 @@ namespace Script5
                 }
             }
 
+            // TODO: Не тестирован, нужно имплементировать куд-то для теста
             public void ShowOnDisplay(IMyTextPanel display)
             {
                 if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
                 else if (_has_door) ShowDoorState(display, hangar_doors, door_state);
             }
 
+            // TODO: Не тестирован, нужно имплементировать куд-то для теста
             public void ShowOnDisplay(IMyTextSurface display)
             {
                 if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
@@ -379,6 +393,7 @@ namespace Script5
 
             public void Monitoring()
             // Циклическая рутина контроля состояний и отображения статусов
+            // TODO: Подумать как привести в человеческий вид
             {
                 if (_has_roof) CheckRoof();
                 if (_has_door) CheckDoor();
@@ -428,13 +443,13 @@ namespace Script5
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     alarm_system.detect_alarms();
-                    Hangar1.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Hangar1.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Hangar1.Monitoring();
-                    Hangar2.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Hangar2.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Hangar2.Monitoring();
-                    Hangar3.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Hangar3.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Hangar3.Monitoring();
-                    Production.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false;
+                    Production.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Production.Monitoring();
                     break;
                 case UpdateType.Terminal:
@@ -442,6 +457,7 @@ namespace Script5
                     break;
                 case UpdateType.Script:
                     // Выполняется по запросу от другого программируемого блока
+                    // TODO: Нужен парсер для разбора приходящей команды на объект и метод
                     switch (argument)
                     {
                         case "hangar1 toggle_door":
