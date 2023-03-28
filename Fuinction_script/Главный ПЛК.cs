@@ -30,34 +30,66 @@ namespace Script5
         public class AlarmSystem
         {
             Program _program;
-            public List<string> current_alarms = new List<string>();
-
+            //public List<string> current_alarms = new List<string>();		
+            public List<Alarm> current_alarms = new List<Alarm>();
             List<IMyWarhead> warheads = new List<IMyWarhead>();
+            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
             bool warhead_detected = false;
+
             public AlarmSystem(Program program)
             {
                 _program = program;
+                _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
+            }
+
+            public class Alarm
+            {
+
+                public string alarm_text;
+				public string alarm_zone;
+				
+				public Alarm(string alarm_text, string alarm_zone)
+                {
+                    this.alarm_text = alarm_text;
+                    this.alarm_zone = alarm_zone;
+                }
+
+                public string AlarmText
+                {
+                    get { return alarm_text; }
+                    set { alarm_text = value; }
+                }
+
+                public string AlarmZone
+                {
+                    get { return alarm_zone; }
+                    set { alarm_zone = value; }
+                }
             }
 
             private bool detect_warheads()
             {
                 _program.GridTerminalSystem.GetBlocksOfType(warheads, warhead => warhead.IsSameConstructAs(_program.Me));
                 warhead_detected = warheads.Count > 0 ? true : false;
+                warheads.ForEach(warhead => warhead.IsArmed = false);
                 return warhead_detected;
             }
             // TODO: Метод на поднятие тревоги если у турелей цель
+            private bool enemy_detected()
+            {
+                return turrets.FindAll(turret => turret.HasTarget).Count() > 0 ? true : false;
+            }
 
             // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе
 
-            // TODO: Метод на автоматическое выключение боеголовок если такие имеются и работают
-
             // TODO: Метод на поиск повреждений критически важных узлов
-            public void detect_alarms()
+            public bool detect_alarms()
             {
                 current_alarms.Clear();
-                if (detect_warheads()) current_alarms.Add("Боеголовка");
+                if (detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА"));
+                if (enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА"));
 
-                // TODO: Изменить, чтобы возвращало не просто список, но и место, где возникла тревога если можно определить
+                return current_alarms.Count() > 0 ? true : false;
             }
         }
 
@@ -81,8 +113,8 @@ namespace Script5
             string _hangar_name;
             float _open_state;
             float _close_state;
-            public bool alarm_mode = false;
-            bool _mem_alarm_mode = false;
+            public string alarm ="НЕТ ТРЕВОГИ";
+            string _mem_alarm;
             bool _has_door = false;
             bool _has_roof = false;
             int _alarm_timer = 0;
@@ -248,19 +280,35 @@ namespace Script5
                 };
             }
 
-            public void ShowAlarm()
+            private void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
             // TODO: Добавить возможность показывать текст тревоги в зависимости от тревоги и упростить по возможности
             {
-                UpdateDisplays(hangar_displays, "!!!ВНИМАНИЕ!!!\nБОЕГОЛОВКА", Color.Red, Color.White);
+                string alarm_text = alarm;
+                string sound;
+                UpdateDisplays(hangar_displays, string.Format("!!!ВНИМАНИЕ!!!\n{0}", alarm_text), Color.Red, Color.White);
                 UpdateLights(hangar_lights, Color.Red, true);
 
-                // Первый запуск тревоги
-                if (_mem_alarm_mode == false)
+                switch (alarm)
                 {
+                    case "БОЕГОЛОВКА":
+                        sound = "Weapon31";
+                        break;
+                    case "ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ":
+                        sound = "SoundBlockEnemyDetected";
+                        break;
+                    default:
+                        sound = "SoundBlockAlert2";
+                        break;
+                }
+
+                // Первый запуск тревоги
+                if (_mem_alarm == "НЕТ ТРЕВОГИ")
+                {
+                    
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
-                        speaker.SelectedSound = "Weapon31";
+                        speaker.SelectedSound = sound;
                         speaker.LoopPeriod = 3;
                         speaker.Play();
                     }
@@ -273,24 +321,22 @@ namespace Script5
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
                         speaker.Stop();
-                        speaker.SelectedSound = "Weapon31";
+                        speaker.SelectedSound = sound;
                         speaker.LoopPeriod = 3;
                         speaker.Play();
                     }
                 }
                 // Пищалка тревоги
-                else if (_alarm_timer % 1 == 0)
+                else if (_alarm_timer % 1 == 0 && _mem_alarm != "НЕТ ТРЕВОГИ")
                 {
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
-                        if (speaker.SelectedSound == "Weapon31")
+                        if (speaker.SelectedSound == sound)
                         {
-                            speaker.Stop();
                             speaker.SelectedSound = "SoundBlockAlert2";
                             speaker.LoopPeriod = 60;
                             speaker.Play();
                         }
-                        
                     }
                 }
             }
@@ -376,14 +422,14 @@ namespace Script5
                 }
             }
 
-            // TODO: Не тестирован, нужно имплементировать куд-то для теста
+            // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextPanel display)
             {
                 if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
                 else if (_has_door) ShowDoorState(display, hangar_doors, door_state);
             }
 
-            // TODO: Не тестирован, нужно имплементировать куд-то для теста
+            // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextSurface display)
             {
                 if (_has_roof) ShowRoofState(display, hangar_hinges, roof_state);
@@ -398,7 +444,7 @@ namespace Script5
                 if (_has_roof) CheckRoof();
                 if (_has_door) CheckDoor();
                 //ShowOnDisplay(_plc_screen1);
-                if (alarm_mode)
+                if (alarm != "НЕТ ТРЕВОГИ")
                 {
                     ShowAlarm();
                 }
@@ -408,10 +454,8 @@ namespace Script5
                     else if (_has_door) ShowStatus(door_state, "ВОРОТА");
                 }
 
-                if (!alarm_mode && _mem_alarm_mode) DisableAlarm();
-
-
-                _mem_alarm_mode = alarm_mode;
+                if (alarm == "НЕТ ТРЕВОГИ" && _mem_alarm != "НЕТ ТРЕВОГИ") DisableAlarm();
+                _mem_alarm = alarm;
             }
 
         }
@@ -442,14 +486,22 @@ namespace Script5
             {
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
-                    alarm_system.detect_alarms();
-                    Hangar1.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
+
+                    if (alarm_system.detect_alarms())
+                    {
+                        Hangar1.alarm = alarm_system.current_alarms[0].alarm_text;
+                        Hangar2.alarm = alarm_system.current_alarms[0].alarm_text;
+                        Hangar3.alarm = alarm_system.current_alarms[0].alarm_text;
+                    }
+                    else
+                    {
+                        Hangar1.alarm = "НЕТ ТРЕВОГИ";
+                        Hangar2.alarm = "НЕТ ТРЕВОГИ";
+                        Hangar3.alarm = "НЕТ ТРЕВОГИ";
+                    }
                     Hangar1.Monitoring();
-                    Hangar2.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Hangar2.Monitoring();
-                    Hangar3.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Hangar3.Monitoring();
-                    Production.alarm_mode = alarm_system.current_alarms.Count() > 0 ? true : false; // TODO: Переосмыслить, должна быть проще запись
                     Production.Monitoring();
                     break;
                 case UpdateType.Terminal:
