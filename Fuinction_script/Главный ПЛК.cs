@@ -29,16 +29,14 @@ namespace Script5
         //------------START--------------
 
         interface IAlarm
-        {
-            // TODO: Вынести мониторинг в отдельный интерфейс  
+        {  
             string alarm { get; set; }
             void Monitoring();
         }
 
         public class AlarmSystem
         {
-            Program _program;
-            //public List<string> current_alarms = new List<string>();		
+            Program _program;	
             public List<Alarm> current_alarms = new List<Alarm>();
             List<IMyWarhead> warheads = new List<IMyWarhead>();
             List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
@@ -51,6 +49,7 @@ namespace Script5
             }
 
             public class Alarm
+                // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
             {
 
                 public string alarm_text;
@@ -82,15 +81,15 @@ namespace Script5
                 warheads.ForEach(warhead => warhead.IsArmed = false);
                 return warhead_detected;
             }
-            // TODO: Метод на поднятие тревоги если у турелей цель
+            // TODO: Метод на поднятие тревоги если у турелей цель (НЕ ПРОВЕРЕН до конца. Есть подозрение, что не работает из-за WeaponCore)
             private bool enemy_detected()
             {
                 return turrets.FindAll(turret => turret.HasTarget).Count() > 0 ? true : false;
             }
 
-            // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе
+            // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе.
+            // Отмена. Будет отдельный объект по энергосистеме базы. Метод будет получать инфу от туда
 
-            // TODO: Метод на поиск повреждений критически важных узлов
             public bool detect_alarms()
             {
                 current_alarms.Clear();
@@ -101,7 +100,8 @@ namespace Script5
             }
         }
 
-        // TODO: Написать класс, который описывал объекты в производственном секторе
+        // TODO: Написать класс, который бы описывал объекты в производственном секторе
+        // TODO: Написать класс, который бы описывал объекты генерации энергии и ее потребление
 
         public class HangarControl : IAlarm
         {
@@ -121,7 +121,6 @@ namespace Script5
             string _hangar_name;
             float _open_state;
             float _close_state;
-            //public string alarm = "НЕТ ТРЕВОГИ";
             string _mem_alarm;
             bool _has_door = false;
             bool _has_roof = false;
@@ -137,6 +136,7 @@ namespace Script5
                 _close_state = close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
                 _has_door = has_door; // Идентификатор наличия ворот
                 _has_roof = has_roof;  // Идентификатор наличия крыши
+                alarm = "НЕТ ТРЕВОГИ";
                 _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
                 debug_display = _program.GridTerminalSystem.GetBlockWithName("debug_display") as IMyTextPanel; // Дисплей для отладки
                 if (debug_display == null)
@@ -234,7 +234,21 @@ namespace Script5
 
             public void ToggleDoor()
             // Откр./Закр. дверь
+            // TODO: Проверить новую реализацию и затем удалить старую
             {
+                switch (door_state)
+                {
+                    case "ОТКРЫТО":
+                    case "ОТКРЫВАЮТСЯ":
+                        CloseDoor();
+                        break;
+                    case "ЗАКРЫТО":
+                    case "ЗАКРЫВАЮТСЯ":
+                        OpenDoor();
+                        break;
+                }
+                // Старая реализация
+                /*
                 foreach (IMyAirtightHangarDoor door in hangar_doors)
                     switch (door.Status)
                     {
@@ -247,6 +261,7 @@ namespace Script5
                             door.CloseDoor();
                             break;
                     }
+                */
             }
 
             public void CheckDoor()
@@ -290,7 +305,7 @@ namespace Script5
 
             private void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
-            // TODO: Добавить возможность показывать текст тревоги в зависимости от тревоги и упростить по возможности
+            // TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
             {
                 string alarm_text = alarm;
                 string sound;
@@ -502,6 +517,7 @@ namespace Script5
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
+                    // TODO: Передавать в класс сектора не только текст ошибки, а весь объект
                     if (alarm_system.detect_alarms())
                     {
                         foreach (IAlarm sector in sectors.Values)
@@ -526,7 +542,8 @@ namespace Script5
                     break;
                 case UpdateType.Script:
                     // Выполняется по запросу от другого программируемого блока
-                    // TODO: Нужен парсер для разбора приходящей команды на объект и метод
+                    // TODO: Отменить! Нужен парсер для разбора приходящей команды на объект и метод.  Invoke запрещен к использованию.
+
                     switch (argument)
                     {
                         case "hangar1 toggle_door":
