@@ -20,12 +20,20 @@ using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using VRage.Voxels.Mesh;
 using static Script5.Program;
+using VRage.Scripting;
 
 namespace Script5
 {
     public sealed class Program : MyGridProgram
     {
         //------------START--------------
+
+        interface IAlarm
+        {
+            // TODO: Вынести мониторинг в отдельный интерфейс  
+            string alarm { get; set; }
+            void Monitoring();
+        }
 
         public class AlarmSystem
         {
@@ -95,7 +103,7 @@ namespace Script5
 
         // TODO: Написать класс, который описывал объекты в производственном секторе
 
-        public class HangarControl
+        public class HangarControl : IAlarm
         {
             /* Класс управления блоками в ангаре
              * Выполняет управление и мониторинг состояния блоков
@@ -109,11 +117,11 @@ namespace Script5
             IMyTextSurface _plc_screen1;
             IMyTextPanel debug_display;
 
-
+            public string alarm { get; set; }
             string _hangar_name;
             float _open_state;
             float _close_state;
-            public string alarm ="НЕТ ТРЕВОГИ";
+            //public string alarm = "НЕТ ТРЕВОГИ";
             string _mem_alarm;
             bool _has_door = false;
             bool _has_roof = false;
@@ -460,6 +468,8 @@ namespace Script5
 
         }
 
+        
+        Dictionary<string, IAlarm> sectors = new Dictionary<string, IAlarm>();
         HangarControl Hangar1;
         HangarControl Hangar2;
         HangarControl Hangar3;
@@ -472,6 +482,11 @@ namespace Script5
             Hangar2 = new HangarControl(this, "Ангар 2", has_door: true, has_roof: true);
             Hangar3 = new HangarControl(this, "Ангар 3", has_door: true);
             Production = new HangarControl(this, "Производство");
+            sectors.Add("hangar1", Hangar1);
+            sectors.Add("hangar2", Hangar2);
+            sectors.Add("hangar3", Hangar3);
+            sectors.Add("production", Production);
+
             alarm_system = new AlarmSystem(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
@@ -486,23 +501,25 @@ namespace Script5
             {
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
-
+                    // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
                     if (alarm_system.detect_alarms())
                     {
-                        Hangar1.alarm = alarm_system.current_alarms[0].alarm_text;
-                        Hangar2.alarm = alarm_system.current_alarms[0].alarm_text;
-                        Hangar3.alarm = alarm_system.current_alarms[0].alarm_text;
+                        foreach (IAlarm sector in sectors.Values)
+                        {
+                            sector.alarm = alarm_system.current_alarms[0].alarm_text;
+                        }
                     }
                     else
                     {
-                        Hangar1.alarm = "НЕТ ТРЕВОГИ";
-                        Hangar2.alarm = "НЕТ ТРЕВОГИ";
-                        Hangar3.alarm = "НЕТ ТРЕВОГИ";
+                        foreach (IAlarm sector in sectors.Values)
+                        {
+                            sector.alarm = "НЕТ ТРЕВОГИ";
+                        }
                     }
-                    Hangar1.Monitoring();
-                    Hangar2.Monitoring();
-                    Hangar3.Monitoring();
-                    Production.Monitoring();
+                    foreach (IAlarm sector in sectors.Values)
+                    {
+                        sector.Monitoring();
+                    }
                     break;
                 case UpdateType.Terminal:
                     // Выполняется при "Выполнить" через терминал
