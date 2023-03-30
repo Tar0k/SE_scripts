@@ -285,7 +285,7 @@ namespace Script5
                 hangar_group.GetBlocksOfType(hangar_displays);
                 hangar_group.GetBlocksOfType(hangar_speakers);
 
-                if (has_roof) Roof1 = new RoofControl(hangar_hinges);
+                if (has_roof) Roof1 = new RoofControl(hangar_hinges, open_state, close_state);
                 if (has_door) Gate1 = new GateControl(hangar_doors);
 
                 //Пред. настройка дисплеев
