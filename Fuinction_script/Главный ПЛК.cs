@@ -54,6 +54,46 @@ namespace Script5
         #endregion
 
         #region Вспомогательные классы
+        public class LightControl
+        {
+            List<IMyLightingBlock> _lights = new List<IMyLightingBlock>(); 
+
+            public LightControl(List<IMyLightingBlock> lights)
+            {
+                _lights = lights;
+                foreach (IMyLightingBlock light in _lights)
+                {
+                    light.BlinkIntervalSeconds = 0;
+                    light.BlinkLength = 0;
+                    light.Intensity = 10;
+                    light.Radius = 20;
+                    light.Color = Color.White;
+                }
+            }
+
+            // Вкл./Выкл. свет в ангаре
+            public void ToggleLights() => _lights.ForEach(light => light.Enabled = light.Enabled ? false : true);
+
+            // Обновление цвета ламп и режима моргания
+            public void UpdateLights(Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
+            {
+                foreach (IMyLightingBlock light in _lights)
+                {
+                    if (light.Color != color) light.Color = color;
+                    if (blink == true)
+                    {
+                        if (light.BlinkIntervalSeconds != blink_interval) light.BlinkIntervalSeconds = blink_interval;
+                        if (light.BlinkLength != blink_length) light.BlinkLength = blink_length;
+                    }
+                    else
+                    {
+                        if (light.BlinkIntervalSeconds != 0) light.BlinkIntervalSeconds = 0;
+                        if (light.BlinkLength != 0) light.BlinkLength = 0;
+                    }
+                }
+            }
+        }
+
         public class GateControl : IGate
         {
             public string gate_state { get; set; }
@@ -148,6 +188,35 @@ namespace Script5
                 roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count() == _roof_hinges.Count() ? "ЗАКРЫТО" : roof_state;
             }
         }
+
+        public class DisplayControl
+        {
+            List<IMyTextPanel> _displays = new List<IMyTextPanel>();
+
+            public DisplayControl(List<IMyTextPanel> displays)
+            {
+                _displays = displays;
+
+                //Пред. настройка дисплеев
+                foreach (IMyTextPanel display in _displays)
+                {
+                    display.FontSize = 4.0f;
+                    display.Alignment = TextAlignment.CENTER;
+                    display.TextPadding = 15;
+                }
+            }
+
+            public void UpdateDisplays(string text, Color background_color, Color font_color)
+            // Обновление содержимого дисплеев
+            {
+                foreach (IMyTextPanel display in _displays)
+                {
+                    display.WriteText(text, false);
+                    if (display.BackgroundColor != background_color) display.BackgroundColor = background_color;
+                    if (display.FontColor != font_color) display.FontColor = font_color;
+                }
+            }
+        }
         #endregion
 
         #region Вспомогательный функции
@@ -239,6 +308,7 @@ namespace Script5
             List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
+            List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
             IMyTextSurface _plc_screen1;
             //IMyTextPanel debug_display;
 
@@ -250,6 +320,8 @@ namespace Script5
             int _alarm_timer = 0;
             public GateControl Gate1;
             public RoofControl Roof1;
+            public LightControl Lights;
+            public DisplayControl Screens;
 
             public HangarControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f, bool has_door = false, bool has_roof = false)
             {
@@ -268,33 +340,16 @@ namespace Script5
                 hangar_group.GetBlocksOfType(hangar_doors);
                 hangar_group.GetBlocksOfType(hangar_displays);
                 hangar_group.GetBlocksOfType(hangar_speakers);
+                hangar_group.GetBlocksOfType(hangar_connectors);
 
                 if (has_roof) Roof1 = new RoofControl(hangar_hinges, open_state, close_state);
                 if (has_door) Gate1 = new GateControl(hangar_doors);
-
-                //Пред. настройка дисплеев
-                foreach (IMyTextPanel display in hangar_displays)
-                {
-                    display.FontSize = 4.0f;
-                    display.Alignment = TextAlignment.CENTER;
-                    display.TextPadding = 15;
-                }
-
-                foreach (IMyLightingBlock light in hangar_lights)
-                {
-                    light.BlinkIntervalSeconds = 0;
-                    light.BlinkLength = 0;
-                    light.Intensity = 10;
-                    light.Radius = 20;
-                    light.Color = Color.White;
-                }
+                Lights = new LightControl(hangar_lights);
+                Screens = new DisplayControl(hangar_displays);
 
                 // Первая операция контроля
                 this.Monitoring();
             }
-
-            public void ToggleLights() => hangar_lights.ForEach(light => light.Enabled = light.Enabled ? false : true);
-            // Вкл./Выкл. свет в ангаре
 
             public void ShowStatus(string block_state, string block_name)
             // Отображение состояний на дисплеях и лампах.
@@ -302,24 +357,24 @@ namespace Script5
                 switch (block_state)
                 {
                     case "ОТКРЫВАЮТСЯ":
-                        UpdateDisplays(hangar_displays, $"{_hangar_name}\n{block_name}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
-                        UpdateLights(hangar_lights, Color.Yellow, true);
+                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ЗАКРЫВАЮТСЯ":
-                        UpdateDisplays(hangar_displays, $"{_hangar_name}\n{block_name}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
-                        UpdateLights(hangar_lights, Color.Yellow, true);
+                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ОТКРЫТО":
-                        UpdateDisplays(hangar_displays, $"{_hangar_name}\n{block_name}\n ОТКРЫТЫ", Color.Green, Color.White);
-                        UpdateLights(hangar_lights, Color.Green, false);
+                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ОТКРЫТЫ", Color.Green, Color.White);
+                        Lights.UpdateLights(Color.Green, false);
                         break;
                     case "ЗАКРЫТО":
-                        UpdateDisplays(hangar_displays, $"{_hangar_name}\n{block_name}\n ЗАКРЫТЫ", Color.Black, Color.White);
-                        UpdateLights(hangar_lights, Color.White, false);
+                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ЗАКРЫТЫ", Color.Black, Color.White);
+                        Lights.UpdateLights(Color.White, false);
                         break;
                     default:
-                        UpdateDisplays(hangar_displays, $"{_hangar_name}\n{block_name}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
-                        UpdateLights(hangar_lights, Color.White, false);
+                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
+                        Lights.UpdateLights(Color.White, false);
                         break;
                 };
             }
@@ -330,8 +385,8 @@ namespace Script5
             {
                 string alarm_text = alarm;
                 string sound;
-                UpdateDisplays(hangar_displays, $"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
-                UpdateLights(hangar_lights, Color.Red, true);
+                Screens.UpdateDisplays($"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
+                Lights.UpdateLights(Color.Red, true);
 
                 switch (alarm)
                 {
@@ -390,36 +445,6 @@ namespace Script5
             {
                 _alarm_timer = 0;
                 hangar_speakers.ForEach(speaker => speaker.Stop());
-            }
-
-            private void UpdateLights(List<IMyLightingBlock> lights, Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
-            // Обновление цвета ламп и режима моргания
-            {
-                foreach (IMyLightingBlock light in lights)
-                {
-                    if (light.Color != color) light.Color = color;
-                    if (blink == true)
-                    {
-                        if (light.BlinkIntervalSeconds != blink_interval) light.BlinkIntervalSeconds = blink_interval;
-                        if (light.BlinkLength != blink_length) light.BlinkLength = blink_length;
-                    }
-                    else
-                    {
-                        if (light.BlinkIntervalSeconds != 0) light.BlinkIntervalSeconds = 0;
-                        if (light.BlinkLength != 0) light.BlinkLength = 0;
-                    }
-                }
-            }
-
-            private static void UpdateDisplays(List<IMyTextPanel> displays, string text, Color background_color, Color font_color)
-            // Обновление содержимого дисплеев
-            {
-                foreach (IMyTextPanel display in displays)
-                {
-                    display.WriteText(text, false);
-                    if (display.BackgroundColor != background_color) display.BackgroundColor = background_color;
-                    if (display.FontColor != font_color) display.FontColor = font_color;
-                }
             }
 
             // TODO: Придумать, как использовать один метод вместо 2-х ShowRoofState почти одинаковых прегрузок
@@ -564,7 +589,7 @@ namespace Script5
                             Hangar1.Gate1.ToggleGate();
                             break;
                         case "hangar1 toggle_light":
-                            Hangar1.ToggleLights();
+                            Hangar1.Lights.ToggleLights();
                             break;
                         case "hangar1 toggle_roof":
                             Hangar1.Roof1.ToggleRoof();
@@ -573,7 +598,7 @@ namespace Script5
                             Hangar2.Gate1.ToggleGate();
                             break;
                         case "hangar2 toggle_light":
-                            Hangar2.ToggleLights();
+                            Hangar2.Lights.ToggleLights();
                             break;
                         case "hangar2 toggle_roof":
                             Hangar2.Roof1.ToggleRoof();
@@ -582,7 +607,7 @@ namespace Script5
                             Hangar3.Gate1.ToggleGate();
                             break;
                         case "hangar3 toggle_light":
-                            Hangar3.ToggleLights();
+                            Hangar3.Lights.ToggleLights();
                             break;
                         case "hangar3 toggle_roof":
                             Hangar3.Roof1.ToggleRoof();
