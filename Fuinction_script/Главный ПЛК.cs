@@ -99,7 +99,7 @@ namespace Script5
             }
         }
 
-        public class GateControl : IGate
+        internal class GateControl : IGate
         {
             public string Gate_state { get; set; }
             private readonly List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
@@ -146,7 +146,7 @@ namespace Script5
             }
         }
 
-        public class RoofControl : IRoof
+        internal class RoofControl : IRoof
         {
             public string Roof_state { get; set; }
             private readonly List<IMyMotorAdvancedStator> _roof_hinges = new List<IMyMotorAdvancedStator>();
@@ -194,7 +194,7 @@ namespace Script5
             }
         }
 
-        public class DisplayControl
+        internal class DisplayControl
         {
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
 
@@ -223,7 +223,7 @@ namespace Script5
             }
         }
 
-        public class Alarm
+        internal class Alarm
         // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
         {
 
@@ -268,20 +268,20 @@ namespace Script5
         }
 
         #endregion
-        public class AlarmSystem
+        internal class AlarmSystem
         {
             readonly Program _program;
             readonly List<IMyWarhead> warheads = new List<IMyWarhead>();
             readonly List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
             bool warhead_detected;
 
-            public AlarmSystem(Program program)
+            internal AlarmSystem(Program program)
             {
                 _program = program;
                 _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
             }
 
-            public List<Alarm> CurrentAlarms { get; } = new List<Alarm>();
+            internal List<Alarm> CurrentAlarms { get; } = new List<Alarm>();
 
             private bool Detect_warheads()
             {
@@ -314,16 +314,16 @@ namespace Script5
         // TODO: Выделить методы и свойства двери и крыши в отдельный класс из класса HangarControl 
 
 
-        public class ControlRoom
+        internal class ControlRoom
         {
             readonly Program _program;
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
             readonly IMyBlockGroup control_room_group;
 
-            public ControlRoom(Program program, string control_room_name)
+            public ControlRoom(Program program, string controlRoomName)
             {
                 _program = program;
-                control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(control_room_name);
+                control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(controlRoomName);
                 control_room_group.GetBlocksOfType(_displays);
 
                 //Пред. настройка дисплеев
@@ -337,7 +337,7 @@ namespace Script5
         }
 
 
-        public class HangarControl : ISector
+        internal class HangarControl : ISector
         {
             /* Класс управления блоками в ангаре
              * Выполняет управление и мониторинг состояния блоков
@@ -356,8 +356,8 @@ namespace Script5
             readonly bool _has_door;
             readonly bool _has_roof;
             int _alarm_timer;
-            public GateControl Gate1 { get; }
-            public RoofControl Roof1 { get; }
+            internal GateControl Gate1 { get; }
+            internal RoofControl Roof1 { get; }
             internal LightControl Lights { get; }
             public DisplayControl Screens { get; }
             readonly IMyBlockGroup hangar_group;
@@ -530,8 +530,11 @@ namespace Script5
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextPanel display)
             {
-                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
-                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                if (display != null)
+                {
+                    if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
+                    else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                }
             }
 
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
