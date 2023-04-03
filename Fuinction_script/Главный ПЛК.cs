@@ -33,8 +33,8 @@ namespace Script5
         #region Интерфейсы
         interface ISector
         {
-            string sector_name { get; set; }
-            List<Alarm> alarm_list { get; set; }
+            string Sector_name { get; set; }
+            List<Alarm> Alarm_list { get; set; }
             void Monitoring();
         }
 
@@ -43,7 +43,7 @@ namespace Script5
             void OpenGate();
             void CloseGate();
             void ToggleGate();
-            string gate_state { get; }
+            string Gate_state { get; }
         }
 
         interface IRoof
@@ -51,7 +51,7 @@ namespace Script5
             void OpenRoof();
             void CloseRoof();
             void ToggleRoof();
-            string roof_state { get; }
+            string Roof_state { get; }
         }
         #endregion
 
@@ -77,15 +77,15 @@ namespace Script5
             public void ToggleLights() => _lights.ForEach(light => light.Enabled = light.Enabled ? false : true);
 
             // Обновление цвета ламп и режима моргания
-            public void UpdateLights(Color color, bool blink, float blink_interval = 1, float blink_length = 50F)
+            public void UpdateLights(Color color, bool blink, float blinkInterval = 1, float blinkLength = 50F)
             {
                 foreach (IMyLightingBlock light in _lights)
                 {
                     if (light.Color != color) light.Color = color;
                     if (blink == true)
                     {
-                        if (light.BlinkIntervalSeconds != blink_interval) light.BlinkIntervalSeconds = blink_interval;
-                        if (light.BlinkLength != blink_length) light.BlinkLength = blink_length;
+                        if (light.BlinkIntervalSeconds != blinkInterval) light.BlinkIntervalSeconds = blinkInterval;
+                        if (light.BlinkLength != blinkLength) light.BlinkLength = blinkLength;
                     }
                     else
                     {
@@ -98,13 +98,13 @@ namespace Script5
 
         public class GateControl : IGate
         {
-            public string gate_state { get; set; }
+            public string Gate_state { get; set; }
             private List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
 
             public GateControl(List<IMyAirtightHangarDoor> gate_doors)
             {
                 _gate_doors = gate_doors;
-                gate_state = "NA";
+                Gate_state = "NA";
             }
 
 
@@ -118,7 +118,7 @@ namespace Script5
             public void ToggleGate()
             // Откр./Закр. ворота
             {
-                switch (gate_state)
+                switch (Gate_state)
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
@@ -134,18 +134,18 @@ namespace Script5
             public void CheckGate()
             // Проверить состояние ворот на откр. или закр. и т.д.
             {
-                gate_state = "NA";
+                Gate_state = "NA";
 
-                gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closing).Count() == _gate_doors.Count() ? "ЗАКРЫВАЮТСЯ" : gate_state;
-                gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Opening).Count() == _gate_doors.Count() ? "ОТКРЫВАЮТСЯ" : gate_state;
-                gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Open).Count() == _gate_doors.Count() ? "ОТКРЫТО" : gate_state;
-                gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closed).Count() == _gate_doors.Count() ? "ЗАКРЫТО" : gate_state;
+                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closing).Count == _gate_doors.Count ? "ЗАКРЫВАЮТСЯ" : Gate_state;
+                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Opening).Count == _gate_doors.Count ? "ОТКРЫВАЮТСЯ" : Gate_state;
+                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Open).Count == _gate_doors.Count ? "ОТКРЫТО" : Gate_state;
+                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closed).Count == _gate_doors.Count ? "ЗАКРЫТО" : Gate_state;
             }
         }
 
         public class RoofControl : IRoof
         {
-            public string roof_state { get; set; }
+            public string Roof_state { get; set; }
             private List<IMyMotorAdvancedStator> _roof_hinges = new List<IMyMotorAdvancedStator>();
             private float _open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
             private float _close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
@@ -155,7 +155,7 @@ namespace Script5
                 _roof_hinges = roof_hinges;
                 _open_state = open_state;
                 _close_state = close_state;
-                roof_state = "NA";
+                Roof_state = "NA";
             }
 
             public void OpenRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0);
@@ -167,7 +167,7 @@ namespace Script5
             public void ToggleRoof()
             // Откр./Закр. крышу
             {
-                switch (roof_state)
+                switch (Roof_state)
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
@@ -183,11 +183,11 @@ namespace Script5
             public void CheckRoof()
             // Проверить состояние крыши на откр. или закр. и т.д.
             {
-                roof_state = "NA";
-                roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count() == _roof_hinges.Count() ? "ЗАКРЫВАЮТСЯ" : roof_state;
-                roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count() == _roof_hinges.Count() ? "ОТКРЫВАЮТСЯ" : roof_state;
-                roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _open_state).Count() == _roof_hinges.Count() ? "ОТКРЫТО" : roof_state;
-                roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count() == _roof_hinges.Count() ? "ЗАКРЫТО" : roof_state;
+                Roof_state = "NA";
+                Roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count == _roof_hinges.Count ? "ЗАКРЫВАЮТСЯ" : Roof_state;
+                Roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count == _roof_hinges.Count ? "ОТКРЫВАЮТСЯ" : Roof_state;
+                Roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _open_state).Count == _roof_hinges.Count ? "ОТКРЫТО" : Roof_state;
+                Roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count == _roof_hinges.Count ? "ЗАКРЫТО" : Roof_state;
             }
         }
 
@@ -228,11 +228,11 @@ namespace Script5
             public string alarm_zone;
             public string alarm_sound;
 
-            public Alarm(string alarm_text, string alarm_zone, string alarm_sound)
+            public Alarm(string alarmText, string alarmZone, string alarmSound)
             {
-                this.alarm_text = alarm_text;
-                this.alarm_zone = alarm_zone;
-                this.alarm_sound = alarm_sound;
+                this.alarm_text = alarmText;
+                this.alarm_zone = alarmZone;
+                this.alarm_sound = alarmSound;
             }
 
             public string Text
@@ -257,11 +257,11 @@ namespace Script5
 
         #endregion
 
-        #region Вспомогательный функции
-        public static float RadToDeg(float rad_value)
         // Конвертация из радиан в градусы
+        #region Вспомогательный функции
+        public static float RadToDeg(float radValue)
         {
-            return rad_value * 180f / 3.14159265359f;
+            return radValue * 180f / 3.14159265359f;
         }
 
         #endregion
@@ -271,7 +271,7 @@ namespace Script5
             public List<Alarm> current_alarms = new List<Alarm>();
             List<IMyWarhead> warheads = new List<IMyWarhead>();
             List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            bool warhead_detected = false;
+            bool warhead_detected;
 
             public AlarmSystem(Program program)
             {
@@ -289,19 +289,19 @@ namespace Script5
             // TODO: Метод на поднятие тревоги если у турелей цель (НЕ ПРОВЕРЕН до конца. Есть подозрение, что не работает из-за WeaponCore)
             private bool enemy_detected()
             {
-                return turrets.FindAll(turret => turret.HasTarget).Count() > 0 ? true : false;
+                return turrets.FindAll(turret => turret.HasTarget).Count > 0 ? true : false;
             }
 
             // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе.
             // Отмена. Будет отдельный объект по энергосистеме базы. Метод будет получать инфу от туда
 
-            public bool detect_alarms()
+            public bool detectAlarms()
             {
                 current_alarms.Clear();
                 if (detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
                 if (enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
 
-                return current_alarms.Count() > 0 ? true : false;
+                return current_alarms.Count > 0 ? true : false;
             }
         }
 
@@ -345,30 +345,30 @@ namespace Script5
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
             List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
-            public List<Alarm> alarm_list { get; set; } = new List<Alarm>();
+            public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
             public IMyTextSurface _plc_screen1;
-            public string sector_name { get; set; }
-            int _mem_alarm_number = 0;
-            bool _has_door = false;
-            bool _has_roof = false;
-            int _alarm_timer = 0;
+            public string Sector_name { get; set; }
+            int _mem_alarm_number;
+            bool _has_door;
+            bool _has_roof;
+            int _alarm_timer;
             public GateControl Gate1;
             public RoofControl Roof1;
             public LightControl Lights;
             public DisplayControl Screens;
             IMyBlockGroup hangar_group;
 
-            public HangarControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f, bool has_door = false, bool has_roof = false)
+            public HangarControl(Program program, string hangarName, float openState = 0f, float closeState = -90f, bool hasDoor = false, bool hasRoof = false)
             {
                 _program = program; //Ссылка на основную программу для возможности использовать GridTerminalSystem
-                sector_name = hangar_name; // Имя группы устройств в ангаре, например "Ангар 1".
-                _has_door = has_door; // Идентификатор наличия ворот
-                _has_roof = has_roof;  // Идентификатор наличия крыши
+                Sector_name = hangarName; // Имя группы устройств в ангаре, например "Ангар 1".
+                _has_door = hasDoor; // Идентификатор наличия ворот
+                _has_roof = hasRoof;  // Идентификатор наличия крыши
                 _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
 
                 
                 //Распределение блоков по типам в соответствующие списки
-                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(sector_name);
+                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(Sector_name);
                 hangar_group.GetBlocksOfType(hangar_lights);
                 hangar_group.GetBlocksOfType(hangar_hinges);
                 hangar_group.GetBlocksOfType(hangar_doors);
@@ -376,8 +376,8 @@ namespace Script5
                 hangar_group.GetBlocksOfType(hangar_speakers);
                 hangar_group.GetBlocksOfType(hangar_connectors);
 
-                if (has_roof) Roof1 = new RoofControl(hangar_hinges, open_state, close_state);
-                if (has_door) Gate1 = new GateControl(hangar_doors);
+                if (hasRoof) Roof1 = new RoofControl(hangar_hinges, openState, closeState);
+                if (hasDoor) Gate1 = new GateControl(hangar_doors);
                 Lights = new LightControl(hangar_lights);
                 Screens = new DisplayControl(hangar_displays);
 
@@ -386,7 +386,7 @@ namespace Script5
             }
 
             //TEST METHOD
-            public void ShowConnectorStatus (IMyTextSurface display)
+            public void ShowConnectorStatus ()
             {
                 foreach (IMyShipConnector connector in hangar_connectors)
                 {
@@ -400,29 +400,29 @@ namespace Script5
                 }
             }
 
-            public void ShowStatus(string block_state, string block_name)
+            public void ShowStatus(string blockState, string blockName)
             // Отображение состояний на дисплеях и лампах.
             {
-                switch (block_state)
+                switch (blockState)
                 {
                     case "ОТКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ЗАКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ОТКРЫТО":
-                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ОТКРЫТЫ", Color.Green, Color.White);
+                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ОТКРЫТЫ", Color.Green, Color.White);
                         Lights.UpdateLights(Color.Green, false);
                         break;
                     case "ЗАКРЫТО":
-                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ЗАКРЫТЫ", Color.Black, Color.White);
+                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ЗАКРЫТЫ", Color.Black, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                     default:
-                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
+                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                 };
@@ -433,13 +433,12 @@ namespace Script5
             // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
             // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом.
             {
-                string alarm_text = alarm_list[0].alarm_text;
-                string sound = alarm_list[0].alarm_sound;
-                string zone = alarm_list[0].alarm_zone;
+                string alarm_text = Alarm_list[0].alarm_text;
+                string sound = Alarm_list[0].alarm_sound;
+                string zone = Alarm_list[0].alarm_zone;
                 Screens.UpdateDisplays($"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
                 Lights.UpdateLights(Color.Red, true);
 
-                _program.Echo($"{alarm_text} {sound} {zone}");
                 // Первый запуск тревоги
                 if (_mem_alarm_number == 0)
                 {
@@ -527,15 +526,15 @@ namespace Script5
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextPanel display)
             {
-                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.roof_state);
-                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.gate_state);
+                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
+                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
             }
 
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextSurface display)
             {
-                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.roof_state);
-                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.gate_state);
+                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
+                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
             }
 
 
@@ -543,20 +542,20 @@ namespace Script5
             // Циклическая рутина контроля состояний и отображения статусов
             // TODO: Подумать как привести в человеческий вид
             {
-                if (Roof1 != null) Roof1.CheckRoof();
-                if (Gate1 != null) Gate1.CheckGate();
-                if (alarm_list.Count > 0)
+                Roof1?.CheckRoof();
+                Gate1?.CheckGate();
+                if (Alarm_list.Count > 0)
                 {
                     ShowAlarm();
                 }
                 else
                 {
-                    if (Roof1 != null) ShowStatus(Roof1.roof_state, "СТВОРКИ");
-                    else if (Gate1 != null) ShowStatus(Gate1.gate_state, "ВОРОТА");
+                    if (Roof1 != null) ShowStatus(Roof1.Roof_state, "СТВОРКИ");
+                    else if (Gate1 != null) ShowStatus(Gate1.Gate_state, "ВОРОТА");
                 }
 
-                if (alarm_list.Count == 0 && _mem_alarm_number != 0) DisableAlarm();
-                _mem_alarm_number = alarm_list.Count;
+                if (Alarm_list.Count == 0 && _mem_alarm_number != 0) DisableAlarm();
+                _mem_alarm_number = Alarm_list.Count;
             }
         }
 
@@ -570,9 +569,9 @@ namespace Script5
 
         public Program()
         {
-            Hangar1 = new HangarControl(this, "Ангар 1", has_door: true);
-            Hangar2 = new HangarControl(this, "Ангар 2", has_door: true, has_roof: true);
-            Hangar3 = new HangarControl(this, "Ангар 3", has_door: true);
+            Hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
+            Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
+            Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
             Production = new HangarControl(this, "Производство");
             sectors.Add("hangar1", Hangar1);
             sectors.Add("hangar2", Hangar2);
@@ -595,19 +594,19 @@ namespace Script5
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
                     // !!!ВЫПОЛНЕНО!!! TODO: Передавать в класс сектора не только текст ошибки, а список ошибок касающийся только сектора
-                    if (alarm_system.detect_alarms())
+                    if (alarm_system.detectAlarms())
                     {
                         foreach (ISector sector in sectors.Values)
                             //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
-                            sector.alarm_list = alarm_system.current_alarms.Where(alarm => alarm.alarm_zone == "БАЗА" || alarm.alarm_zone == sector.sector_name).ToList();
+                            sector.Alarm_list = alarm_system.current_alarms.Where(alarm => alarm.alarm_zone == "БАЗА" || alarm.alarm_zone == sector.Sector_name).ToList();
                         }
                     }
                     else
                     {
                         foreach (ISector sector in sectors.Values)
                         {
-                            sector.alarm_list.Clear();
+                            sector.Alarm_list.Clear();
                         }
                     }
                     foreach (ISector sector in sectors.Values)
