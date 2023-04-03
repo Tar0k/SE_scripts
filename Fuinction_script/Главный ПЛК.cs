@@ -29,7 +29,10 @@ namespace Script5
 {
     public sealed class Program : MyGridProgram
     {
+
+
         //------------START--------------
+
         #region Интерфейсы
         interface ISector
         {
@@ -101,9 +104,9 @@ namespace Script5
             public string Gate_state { get; set; }
             private readonly List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
 
-            public GateControl(List<IMyAirtightHangarDoor> gate_doors)
+            public GateControl(List<IMyAirtightHangarDoor> gateDoors)
             {
-                _gate_doors = gate_doors;
+                _gate_doors = gateDoors;
                 Gate_state = "NA";
             }
 
@@ -208,14 +211,14 @@ namespace Script5
                 }
             }
 
-            public void UpdateDisplays(string text, Color background_color, Color font_color)
+            public void UpdateDisplays(string text, Color backgroundColor, Color fontColor)
             // Обновление содержимого дисплеев
             {
                 foreach (IMyTextPanel display in _displays)
                 {
                     display.WriteText(text, false);
-                    if (display.BackgroundColor != background_color) display.BackgroundColor = background_color;
-                    if (display.FontColor != font_color) display.FontColor = font_color;
+                    if (display.BackgroundColor != backgroundColor) display.BackgroundColor = backgroundColor;
+                    if (display.FontColor != fontColor) display.FontColor = fontColor;
                 }
             }
         }
@@ -261,7 +264,7 @@ namespace Script5
         #region Вспомогательный функции
         public static float RadToDeg(float radValue)
         {
-            return radValue * 180f / 3.14159265359f;
+            return radValue * 180f / (float)Math.PI;
         }
 
         #endregion
