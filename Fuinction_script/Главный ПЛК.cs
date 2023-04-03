@@ -23,6 +23,7 @@ using static Script5.Program;
 using VRage.Scripting;
 using static Script5.Program.AlarmSystem;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace Script5
 {
@@ -32,7 +33,8 @@ namespace Script5
         #region Интерфейсы
         interface ISector
         {
-            string alarm { get; set; }
+            string sector_name { get; set; }
+            List<Alarm> alarm_list { get; set; }
             void Monitoring();
         }
 
@@ -217,6 +219,42 @@ namespace Script5
                 }
             }
         }
+
+        public class Alarm
+        // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
+        {
+
+            public string alarm_text;
+            public string alarm_zone;
+            public string alarm_sound;
+
+            public Alarm(string alarm_text, string alarm_zone, string alarm_sound)
+            {
+                this.alarm_text = alarm_text;
+                this.alarm_zone = alarm_zone;
+                this.alarm_sound = alarm_sound;
+            }
+
+            public string Text
+            {
+                get { return alarm_text; }
+                set { alarm_text = value; }
+            }
+
+            public string Zone
+            {
+                get { return alarm_zone; }
+                set { alarm_zone = value; }
+            }
+
+            public string Sound
+            {
+                get { return alarm_sound; }
+                set { alarm_zone = value; }
+            }
+        }
+
+
         #endregion
 
         #region Вспомогательный функции
@@ -241,32 +279,6 @@ namespace Script5
                 _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
             }
 
-            public class Alarm
-            // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
-            {
-
-                public string alarm_text;
-                public string alarm_zone;
-
-                public Alarm(string alarm_text, string alarm_zone)
-                {
-                    this.alarm_text = alarm_text;
-                    this.alarm_zone = alarm_zone;
-                }
-
-                public string AlarmText
-                {
-                    get { return alarm_text; }
-                    set { alarm_text = value; }
-                }
-
-                public string AlarmZone
-                {
-                    get { return alarm_zone; }
-                    set { alarm_zone = value; }
-                }
-            }
-
             private bool detect_warheads()
             {
                 _program.GridTerminalSystem.GetBlocksOfType(warheads, warhead => warhead.IsSameConstructAs(_program.Me));
@@ -286,8 +298,8 @@ namespace Script5
             public bool detect_alarms()
             {
                 current_alarms.Clear();
-                if (detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА"));
-                if (enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА"));
+                if (detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
+                if (enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
 
                 return current_alarms.Count() > 0 ? true : false;
             }
@@ -296,6 +308,30 @@ namespace Script5
         // TODO: Написать класс, который бы описывал объекты в производственном секторе
         // TODO: Написать класс, который бы описывал объекты генерации энергии и ее потребление
         // TODO: Выделить методы и свойства двери и крыши в отдельный класс из класса HangarControl 
+
+
+        public class ControlRoom
+        {
+            Program _program;
+            List<IMyTextPanel> _displays = new List<IMyTextPanel>();
+            IMyBlockGroup control_room_group;
+
+            public ControlRoom(Program program, string control_room_name)
+            {
+                _program = program;
+                control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(control_room_name);
+                control_room_group.GetBlocksOfType(_displays);
+
+                //Пред. настройка дисплеев
+                foreach (IMyTextPanel display in _displays)
+                {
+                    display.FontSize = 2.0f;
+                    display.Alignment = TextAlignment.CENTER;
+                    display.TextPadding = 5;
+                }
+            }
+        }
+
 
         public class HangarControl : ISector
         {
@@ -309,12 +345,10 @@ namespace Script5
             List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
             List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
             List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
-            IMyTextSurface _plc_screen1;
-            //IMyTextPanel debug_display;
-
-            public string alarm { get; set; }
-            string _hangar_name;
-            string _mem_alarm = "NA";
+            public List<Alarm> alarm_list { get; set; } = new List<Alarm>();
+            public IMyTextSurface _plc_screen1;
+            public string sector_name { get; set; }
+            int _mem_alarm_number = 0;
             bool _has_door = false;
             bool _has_roof = false;
             int _alarm_timer = 0;
@@ -322,19 +356,19 @@ namespace Script5
             public RoofControl Roof1;
             public LightControl Lights;
             public DisplayControl Screens;
+            IMyBlockGroup hangar_group;
 
             public HangarControl(Program program, string hangar_name, float open_state = 0f, float close_state = -90f, bool has_door = false, bool has_roof = false)
             {
                 _program = program; //Ссылка на основную программу для возможности использовать GridTerminalSystem
-                _hangar_name = hangar_name; // Имя группы устройств в ангаре, например "Ангар 1".
+                sector_name = hangar_name; // Имя группы устройств в ангаре, например "Ангар 1".
                 _has_door = has_door; // Идентификатор наличия ворот
                 _has_roof = has_roof;  // Идентификатор наличия крыши
-                alarm = "НЕТ ТРЕВОГИ";
                 _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
 
-                IMyBlockGroup hangar_group;
+                
                 //Распределение блоков по типам в соответствующие списки
-                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(_hangar_name);
+                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(sector_name);
                 hangar_group.GetBlocksOfType(hangar_lights);
                 hangar_group.GetBlocksOfType(hangar_hinges);
                 hangar_group.GetBlocksOfType(hangar_doors);
@@ -351,29 +385,44 @@ namespace Script5
                 this.Monitoring();
             }
 
+            //TEST METHOD
+            public void ShowConnectorStatus (IMyTextSurface display)
+            {
+                foreach (IMyShipConnector connector in hangar_connectors)
+                {
+                    string text = $"{connector.CustomName}: {connector.Status}";
+                    if (connector.Status == MyShipConnectorStatus.Connected)
+                    {
+                        IMyShipConnector other_connector = connector.OtherConnector;
+                        text += $" {other_connector.CubeGrid.CustomName}";
+                    }
+                    _program.Echo(text);
+                }
+            }
+
             public void ShowStatus(string block_state, string block_name)
             // Отображение состояний на дисплеях и лампах.
             {
                 switch (block_state)
                 {
                     case "ОТКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ЗАКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ОТКРЫТО":
-                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ОТКРЫТЫ", Color.Green, Color.White);
+                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ОТКРЫТЫ", Color.Green, Color.White);
                         Lights.UpdateLights(Color.Green, false);
                         break;
                     case "ЗАКРЫТО":
-                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n ЗАКРЫТЫ", Color.Black, Color.White);
+                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n ЗАКРЫТЫ", Color.Black, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                     default:
-                        Screens.UpdateDisplays($"{_hangar_name}\n{block_name}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
+                        Screens.UpdateDisplays($"{sector_name}\n{block_name}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                 };
@@ -381,28 +430,18 @@ namespace Script5
 
             private void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
-            // TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
+            // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
+            // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом
             {
-                string alarm_text = alarm;
-                string sound;
+                string alarm_text = alarm_list[0].alarm_text;
+                string sound = alarm_list[0].alarm_sound;
+                string zone = alarm_list[0].alarm_zone;
                 Screens.UpdateDisplays($"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
                 Lights.UpdateLights(Color.Red, true);
 
-                switch (alarm)
-                {
-                    case "БОЕГОЛОВКА":
-                        sound = "Weapon31";
-                        break;
-                    case "ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ":
-                        sound = "SoundBlockEnemyDetected";
-                        break;
-                    default:
-                        sound = "SoundBlockAlert2";
-                        break;
-                }
-
+                _program.Echo($"{alarm_text} {sound} {zone}");
                 // Первый запуск тревоги
-                if (_mem_alarm == "НЕТ ТРЕВОГИ")
+                if (_mem_alarm_number == 0)
                 {
 
                     foreach (IMySoundBlock speaker in hangar_speakers)
@@ -426,7 +465,7 @@ namespace Script5
                     }
                 }
                 // Пищалка тревоги
-                else if (_alarm_timer % 1 == 0 && _mem_alarm != "НЕТ ТРЕВОГИ")
+                else if (_alarm_timer % 1 == 0 && _mem_alarm_number != 0)
                 {
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
@@ -506,8 +545,7 @@ namespace Script5
             {
                 if (Roof1 != null) Roof1.CheckRoof();
                 if (Gate1 != null) Gate1.CheckGate();
-                //ShowOnDisplay(_plc_screen1);
-                if (alarm != "НЕТ ТРЕВОГИ")
+                if (alarm_list.Count > 0)
                 {
                     ShowAlarm();
                 }
@@ -517,8 +555,8 @@ namespace Script5
                     else if (Gate1 != null) ShowStatus(Gate1.gate_state, "ВОРОТА");
                 }
 
-                if (alarm == "НЕТ ТРЕВОГИ" && _mem_alarm != "НЕТ ТРЕВОГИ") DisableAlarm();
-                _mem_alarm = alarm;
+                if (alarm_list.Count == 0 && _mem_alarm_number != 0) DisableAlarm();
+                _mem_alarm_number = alarm_list.Count;
             }
         }
 
@@ -556,32 +594,33 @@ namespace Script5
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
-                    // TODO: Передавать в класс сектора не только текст ошибки, а весь объект
+                    // !!!ВЫПОЛНЕНО!!! TODO: Передавать в класс сектора не только текст ошибки, а список ошибок касающийся только сектора
                     if (alarm_system.detect_alarms())
                     {
                         foreach (ISector sector in sectors.Values)
+                            //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
-                            sector.alarm = alarm_system.current_alarms[0].alarm_text;
+                            sector.alarm_list = alarm_system.current_alarms.Where(alarm => alarm.alarm_zone == "БАЗА" || alarm.alarm_zone == sector.sector_name).ToList();
                         }
                     }
                     else
                     {
                         foreach (ISector sector in sectors.Values)
                         {
-                            sector.alarm = "НЕТ ТРЕВОГИ";
+                            sector.alarm_list.Clear();
                         }
                     }
                     foreach (ISector sector in sectors.Values)
-                    {
+                    {   
                         sector.Monitoring();
                     }
                     break;
+
                 case UpdateType.Terminal:
                     // Выполняется при "Выполнить" через терминал
                     break;
                 case UpdateType.Script:
                     // Выполняется по запросу от другого программируемого блока
-                    // TODO: Отменить! Нужен парсер для разбора приходящей команды на объект и метод.  Invoke запрещен к использованию.
 
                     switch (argument)
                     {
