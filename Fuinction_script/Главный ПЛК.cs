@@ -431,7 +431,7 @@ namespace Script5
             private void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
             // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
-            // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом
+            // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом.
             {
                 string alarm_text = alarm_list[0].alarm_text;
                 string sound = alarm_list[0].alarm_sound;
