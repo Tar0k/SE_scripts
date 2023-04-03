@@ -59,7 +59,7 @@ namespace Script5
         #endregion
 
         #region Вспомогательные классы
-        public class LightControl
+        internal class LightControl
         {
             readonly List<IMyLightingBlock> _lights = new List<IMyLightingBlock>(); 
 
@@ -271,7 +271,6 @@ namespace Script5
         public class AlarmSystem
         {
             readonly Program _program;
-            public List<Alarm> current_alarms = new List<Alarm>();
             readonly List<IMyWarhead> warheads = new List<IMyWarhead>();
             readonly List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
             bool warhead_detected;
@@ -281,6 +280,8 @@ namespace Script5
                 _program = program;
                 _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
             }
+
+            public List<Alarm> CurrentAlarms { get; } = new List<Alarm>();
 
             private bool Detect_warheads()
             {
@@ -300,11 +301,11 @@ namespace Script5
 
             public bool DetectAlarms()
             {
-                current_alarms.Clear();
-                if (Detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
-                if (Enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
+                CurrentAlarms.Clear();
+                if (Detect_warheads()) CurrentAlarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
+                if (Enemy_detected()) CurrentAlarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
 
-                return current_alarms.Count > 0;
+                return CurrentAlarms.Count > 0;
             }
         }
 
@@ -349,17 +350,18 @@ namespace Script5
             readonly List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
             readonly List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
             public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
-            public IMyTextSurface _plc_screen1;
+            public IMyTextSurface PlcScreen1 { get; }
             public string Sector_name { get; set; }
             int _mem_alarm_number;
             readonly bool _has_door;
             readonly bool _has_roof;
             int _alarm_timer;
-            public GateControl Gate1;
-            public RoofControl Roof1;
-            public LightControl Lights;
-            public DisplayControl Screens;
+            public GateControl Gate1 { get; }
+            public RoofControl Roof1 { get; }
+            internal LightControl Lights { get; }
+            public DisplayControl Screens { get; }
             readonly IMyBlockGroup hangar_group;
+
 
             public HangarControl(Program program, string hangarName, float openState = 0f, float closeState = -90f, bool hasDoor = false, bool hasRoof = false)
             {
@@ -367,7 +369,7 @@ namespace Script5
                 Sector_name = hangarName; // Имя группы устройств в ангаре, например "Ангар 1".
                 _has_door = hasDoor; // Идентификатор наличия ворот
                 _has_roof = hasRoof;  // Идентификатор наличия крыши
-                _plc_screen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
+                PlcScreen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
 
                 
                 //Распределение блоков по типам в соответствующие списки
@@ -385,7 +387,7 @@ namespace Script5
                 Screens = new DisplayControl(hangar_displays);
 
                 // Первая операция контроля
-                this.Monitoring();
+                Monitoring();
             }
 
             //TEST METHOD
@@ -535,8 +537,11 @@ namespace Script5
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextSurface display)
             {
-                if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
-                else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                if (display != null)
+                {
+                    if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
+                    else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                }
             }
 
 
@@ -596,7 +601,7 @@ namespace Script5
                         foreach (ISector sector in sectors.Values)
                             //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
-                            sector.Alarm_list = alarm_system.current_alarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.Sector_name).ToList();
+                            sector.Alarm_list = alarm_system.CurrentAlarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.Sector_name).ToList();
                         }
                     }
                     else
