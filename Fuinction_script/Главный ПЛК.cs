@@ -58,7 +58,7 @@ namespace Script5
         #region Вспомогательные классы
         public class LightControl
         {
-            List<IMyLightingBlock> _lights = new List<IMyLightingBlock>(); 
+            readonly List<IMyLightingBlock> _lights = new List<IMyLightingBlock>(); 
 
             public LightControl(List<IMyLightingBlock> lights)
             {
@@ -74,7 +74,7 @@ namespace Script5
             }
 
             // Вкл./Выкл. свет в ангаре
-            public void ToggleLights() => _lights.ForEach(light => light.Enabled = light.Enabled ? false : true);
+            public void ToggleLights() => _lights.ForEach(light => light.Enabled = !light.Enabled);
 
             // Обновление цвета ламп и режима моргания
             public void UpdateLights(Color color, bool blink, float blinkInterval = 1, float blinkLength = 50F)
@@ -99,7 +99,7 @@ namespace Script5
         public class GateControl : IGate
         {
             public string Gate_state { get; set; }
-            private List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
+            private readonly List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
 
             public GateControl(List<IMyAirtightHangarDoor> gate_doors)
             {
@@ -146,15 +146,15 @@ namespace Script5
         public class RoofControl : IRoof
         {
             public string Roof_state { get; set; }
-            private List<IMyMotorAdvancedStator> _roof_hinges = new List<IMyMotorAdvancedStator>();
-            private float _open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
-            private float _close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
+            private readonly List<IMyMotorAdvancedStator> _roof_hinges = new List<IMyMotorAdvancedStator>();
+            private readonly float _open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
+            private readonly float _close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
 
-            public RoofControl(List<IMyMotorAdvancedStator> roof_hinges, float open_state = 0f, float close_state = -90f)
+            public RoofControl(List<IMyMotorAdvancedStator> roofHinges, float openState = 0f, float closeState = -90f)
             {
-                _roof_hinges = roof_hinges;
-                _open_state = open_state;
-                _close_state = close_state;
+                _roof_hinges = roofHinges;
+                _open_state = openState;
+                _close_state = closeState;
                 Roof_state = "NA";
             }
 
@@ -193,7 +193,7 @@ namespace Script5
 
         public class DisplayControl
         {
-            List<IMyTextPanel> _displays = new List<IMyTextPanel>();
+            readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
 
             public DisplayControl(List<IMyTextPanel> displays)
             {
@@ -224,15 +224,15 @@ namespace Script5
         // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
         {
 
-            public string alarm_text;
-            public string alarm_zone;
-            public string alarm_sound;
+            string alarm_text;
+            string alarm_zone;
+            string alarm_sound;
 
             public Alarm(string alarmText, string alarmZone, string alarmSound)
             {
-                this.alarm_text = alarmText;
-                this.alarm_zone = alarmZone;
-                this.alarm_sound = alarmSound;
+                alarm_text = alarmText;
+                alarm_zone = alarmZone;
+                alarm_sound = alarmSound;
             }
 
             public string Text
@@ -250,7 +250,7 @@ namespace Script5
             public string Sound
             {
                 get { return alarm_sound; }
-                set { alarm_zone = value; }
+                set { alarm_sound = value; }
             }
         }
 
@@ -267,10 +267,10 @@ namespace Script5
         #endregion
         public class AlarmSystem
         {
-            Program _program;
+            readonly Program _program;
             public List<Alarm> current_alarms = new List<Alarm>();
-            List<IMyWarhead> warheads = new List<IMyWarhead>();
-            List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
+            readonly List<IMyWarhead> warheads = new List<IMyWarhead>();
+            readonly List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
             bool warhead_detected;
 
             public AlarmSystem(Program program)
@@ -279,29 +279,29 @@ namespace Script5
                 _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
             }
 
-            private bool detect_warheads()
+            private bool Detect_warheads()
             {
                 _program.GridTerminalSystem.GetBlocksOfType(warheads, warhead => warhead.IsSameConstructAs(_program.Me));
-                warhead_detected = warheads.Count > 0 ? true : false;
+                warhead_detected = warheads.Count > 0;
                 warheads.ForEach(warhead => warhead.IsArmed = false);
                 return warhead_detected;
             }
             // TODO: Метод на поднятие тревоги если у турелей цель (НЕ ПРОВЕРЕН до конца. Есть подозрение, что не работает из-за WeaponCore)
-            private bool enemy_detected()
+            private bool Enemy_detected()
             {
-                return turrets.FindAll(turret => turret.HasTarget).Count > 0 ? true : false;
+                return turrets.FindAll(turret => turret.HasTarget).Count > 0;
             }
 
             // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе.
             // Отмена. Будет отдельный объект по энергосистеме базы. Метод будет получать инфу от туда
 
-            public bool detectAlarms()
+            public bool DetectAlarms()
             {
                 current_alarms.Clear();
-                if (detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
-                if (enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
+                if (Detect_warheads()) current_alarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
+                if (Enemy_detected()) current_alarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
 
-                return current_alarms.Count > 0 ? true : false;
+                return current_alarms.Count > 0;
             }
         }
 
@@ -312,9 +312,9 @@ namespace Script5
 
         public class ControlRoom
         {
-            Program _program;
-            List<IMyTextPanel> _displays = new List<IMyTextPanel>();
-            IMyBlockGroup control_room_group;
+            readonly Program _program;
+            readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
+            readonly IMyBlockGroup control_room_group;
 
             public ControlRoom(Program program, string control_room_name)
             {
@@ -338,25 +338,25 @@ namespace Script5
             /* Класс управления блоками в ангаре
              * Выполняет управление и мониторинг состояния блоков
              */
-            Program _program;
-            List<IMyLightingBlock> hangar_lights = new List<IMyLightingBlock>();
-            List<IMyMotorAdvancedStator> hangar_hinges = new List<IMyMotorAdvancedStator>();
-            List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
-            List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
-            List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
-            List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
+            readonly Program _program;
+            readonly List<IMyLightingBlock> hangar_lights = new List<IMyLightingBlock>();
+            readonly List<IMyMotorAdvancedStator> hangar_hinges = new List<IMyMotorAdvancedStator>();
+            readonly List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
+            readonly List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
+            readonly List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
+            readonly List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
             public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
             public IMyTextSurface _plc_screen1;
             public string Sector_name { get; set; }
             int _mem_alarm_number;
-            bool _has_door;
-            bool _has_roof;
+            readonly bool _has_door;
+            readonly bool _has_roof;
             int _alarm_timer;
             public GateControl Gate1;
             public RoofControl Roof1;
             public LightControl Lights;
             public DisplayControl Screens;
-            IMyBlockGroup hangar_group;
+            readonly IMyBlockGroup hangar_group;
 
             public HangarControl(Program program, string hangarName, float openState = 0f, float closeState = -90f, bool hasDoor = false, bool hasRoof = false)
             {
@@ -433,9 +433,8 @@ namespace Script5
             // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
             // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом.
             {
-                string alarm_text = Alarm_list[0].alarm_text;
-                string sound = Alarm_list[0].alarm_sound;
-                string zone = Alarm_list[0].alarm_zone;
+                string alarm_text = Alarm_list[0].Text;
+                string sound = Alarm_list[0].Sound;
                 Screens.UpdateDisplays($"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
                 Lights.UpdateLights(Color.Red, true);
 
@@ -488,26 +487,26 @@ namespace Script5
             // TODO: Придумать, как использовать один метод вместо 2-х ShowRoofState почти одинаковых прегрузок
             private static void ShowRoofState(IMyTextSurface display, List<IMyMotorAdvancedStator> hinges, string roof_state)
             {
-                display.WriteText(String.Format("{0}\n", roof_state), false);
+                display.WriteText($"{roof_state}\n", false);
                 foreach (IMyMotorAdvancedStator hinge in hinges)
                 {
-                    display.WriteText(String.Format("{0}: {1}\n", hinge.CustomName, Math.Round(RadToDeg(hinge.Angle), 0).ToString()), true);
+                    display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true);
                 }
             }
 
             private static void ShowRoofState(IMyTextPanel display, List<IMyMotorAdvancedStator> hinges, string roof_state)
             {
-                display.WriteText(String.Format("{0}\n", roof_state), false);
+                display.WriteText($"{roof_state}\n", false);
                 foreach (IMyMotorAdvancedStator hinge in hinges)
                 {
-                    display.WriteText(String.Format("{0}: {1}\n", hinge.CustomName, Math.Round(RadToDeg(hinge.Angle), 0).ToString()), true);
+                    display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true);
                 }
             }
 
             // TODO: Придумать, как использовать один метод вместо 2-х ShowDoorState почти одинаковых прегрузок
             private static void ShowDoorState(IMyTextPanel display, List<IMyAirtightHangarDoor> doors, string door_state)
             {
-                display.WriteText(String.Format("{0}\n", door_state), false);
+                display.WriteText($"{door_state}\n", false);
                 foreach (IMyAirtightHangarDoor door in doors)
                 {
                     display.WriteText($"{door.CustomName}: {door.Status}\n", true);
@@ -516,7 +515,7 @@ namespace Script5
 
             private static void ShowDoorState(IMyTextSurface display, List<IMyAirtightHangarDoor> doors, string door_state)
             {
-                display.WriteText(String.Format("{0}\n", door_state), false);
+                display.WriteText($"{door_state}\n", false);
                 foreach (IMyAirtightHangarDoor door in doors)
                 {
                     display.WriteText($"{door.CustomName}: {door.Status}\n", true);
@@ -559,13 +558,12 @@ namespace Script5
             }
         }
 
-
-        Dictionary<string, ISector> sectors = new Dictionary<string, ISector>();
-        HangarControl Hangar1;
-        HangarControl Hangar2;
-        HangarControl Hangar3;
-        HangarControl Production;
-        AlarmSystem alarm_system;
+        readonly Dictionary<string, ISector> sectors = new Dictionary<string, ISector>();
+        private readonly HangarControl Hangar1;
+        private readonly HangarControl Hangar2;
+        private readonly HangarControl Hangar3;
+        private readonly HangarControl Production;
+        private readonly AlarmSystem alarm_system;
 
         public Program()
         {
@@ -582,10 +580,6 @@ namespace Script5
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
 
-        public void Save()
-        {
-        }
-
         public void Main(string argument, UpdateType updateSource)
         {
             switch (updateSource)
@@ -594,12 +588,12 @@ namespace Script5
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
                     // !!!ВЫПОЛНЕНО!!! TODO: Передавать в класс сектора не только текст ошибки, а список ошибок касающийся только сектора
-                    if (alarm_system.detectAlarms())
+                    if (alarm_system.DetectAlarms())
                     {
                         foreach (ISector sector in sectors.Values)
                             //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
-                            sector.Alarm_list = alarm_system.current_alarms.Where(alarm => alarm.alarm_zone == "БАЗА" || alarm.alarm_zone == sector.Sector_name).ToList();
+                            sector.Alarm_list = alarm_system.current_alarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.Sector_name).ToList();
                         }
                     }
                     else
