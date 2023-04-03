@@ -24,6 +24,7 @@ using VRage.Scripting;
 using static Script5.Program.AlarmSystem;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Script5
 {
@@ -61,7 +62,7 @@ namespace Script5
         #region Вспомогательные классы
         internal class LightControl
         {
-            readonly List<IMyLightingBlock> _lights = new List<IMyLightingBlock>(); 
+            readonly List<IMyLightingBlock> _lights = new List<IMyLightingBlock>();
 
             public LightControl(List<IMyLightingBlock> lights)
             {
@@ -257,11 +258,61 @@ namespace Script5
             }
         }
 
+        //Класс инфы об корабле
+        internal class ShipInfo
+            //TODO: Посмотреть, есть ли упрощенная запись. Слишком длинно.
+        {
+            string ship_name;
+            float battery_level;
+            float max_battery_level;
+            float current_capacity;
+            float max_capacity;
 
+            public ShipInfo(string ShipName, float BatteryLevel, float MaxBatteryLevel, float CurrentCapacity, float MaxCapacity)
+            {
+                ship_name = ShipName;
+                battery_level = BatteryLevel;
+                max_battery_level = MaxBatteryLevel;
+                max_capacity = MaxCapacity;
+                current_capacity = CurrentCapacity;
+            }
+
+            public string ShipName
+            {
+                get { return ship_name; }
+                set { ship_name = value; }
+            }
+
+            public float BatteryLevel
+            {
+                get { return battery_level; }
+                set { battery_level = value; }
+            }
+
+            public float MaxBatteryLevel
+            {
+                get { return max_battery_level; }
+                set { max_battery_level = value; }
+            }
+
+            public float CurrentCapacity
+            {
+                get { return current_capacity; }
+                set { current_capacity = value; }
+            }
+
+            public float MaxCapacity
+            {
+                get { return max_capacity; }
+                set { max_capacity = value; }
+            }
+
+        }
         #endregion
 
-        // Конвертация из радиан в градусы
+
         #region Вспомогательный функции
+        // Конвертация из радиан в градусы
         public static float RadToDeg(float radValue)
         {
             return radValue * 180f / (float)Math.PI;
@@ -319,6 +370,7 @@ namespace Script5
             readonly Program _program;
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
             readonly IMyBlockGroup control_room_group;
+            readonly List<IMyTextPanel> _hangar_displays = new List<IMyTextPanel>();
 
             public ControlRoom(Program program, string controlRoomName)
             {
@@ -332,6 +384,24 @@ namespace Script5
                     display.FontSize = 2.0f;
                     display.Alignment = TextAlignment.CENTER;
                     display.TextPadding = 5;
+                }
+
+                _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar", StringComparison.Ordinal)).ToList();
+            }
+
+            //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара ( не доделано)
+            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<string, ShipInfo?> connectors_info)
+            {
+                if (display_index < _hangar_displays.Count)
+                {
+                    string text = $"{hangarName}\n";
+                    foreach (var connector_info in connectors_info)
+                    {
+                        string ship_info = connector_info.Value != null ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
+                        text += $"{connector_info.Key}: {ship_info}\n";
+                    }
+
+                    _hangar_displays[display_index].WriteText(text, false);
                 }
             }
         }
@@ -371,7 +441,7 @@ namespace Script5
                 _has_roof = hasRoof;  // Идентификатор наличия крыши
                 PlcScreen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
 
-                
+
                 //Распределение блоков по типам в соответствующие списки
                 hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(Sector_name);
                 hangar_group.GetBlocksOfType(hangar_lights);
@@ -390,19 +460,21 @@ namespace Script5
                 Monitoring();
             }
 
-            //TEST METHOD
-            public void ShowConnectorStatus ()
+            public Dictionary<string, ShipInfo?> GetConnectorsInfo()
             {
+                Dictionary<string, ShipInfo?> connectors_info = new Dictionary<string, ShipInfo?>();
                 foreach (IMyShipConnector connector in hangar_connectors)
                 {
-                    string text = $"{connector.CustomName}: {connector.Status}";
                     if (connector.Status == MyShipConnectorStatus.Connected)
                     {
-                        IMyShipConnector other_connector = connector.OtherConnector;
-                        text += $" {other_connector.CubeGrid.CustomName}";
+                        connectors_info.Add(connector.OtherConnector.CubeGrid.CustomName, new ShipInfo(connector.OtherConnector.CubeGrid.CustomName, 0, 0, 0, 0));
                     }
-                    _program.Echo(text);
+                    else
+                    {
+                        connectors_info.Add(connector.OtherConnector.CubeGrid.CustomName, null);
+                    }
                 }
+                return connectors_info;
             }
 
             public void ShowStatus(string blockState, string blockName)
@@ -468,7 +540,7 @@ namespace Script5
                     }
                 }
                 // Пищалка тревоги
-                else if (_alarm_timer % 1 == 0 && _mem_alarm_number != 0)
+                else if (_mem_alarm_number != 0)
                 {
                     foreach (IMySoundBlock speaker in hangar_speakers)
                     {
@@ -575,9 +647,11 @@ namespace Script5
         private readonly HangarControl Hangar3;
         private readonly HangarControl Production;
         private readonly AlarmSystem alarm_system;
+        private readonly ControlRoom control_room;
 
         public Program()
         {
+            control_room = new ControlRoom(this, "ЦУП");
             Hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
             Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
             Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
@@ -602,7 +676,7 @@ namespace Script5
                     if (alarm_system.DetectAlarms())
                     {
                         foreach (ISector sector in sectors.Values)
-                            //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
+                        //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
                             sector.Alarm_list = alarm_system.CurrentAlarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.Sector_name).ToList();
                         }
@@ -615,9 +689,12 @@ namespace Script5
                         }
                     }
                     foreach (ISector sector in sectors.Values)
-                    {   
+                    {
                         sector.Monitoring();
                     }
+                    control_room.ShowHangarConnectorInfo("Ангар 1", 0, Hangar1.GetConnectorsInfo());
+                    control_room.ShowHangarConnectorInfo("Ангар 2", 1, Hangar1.GetConnectorsInfo());
+                    control_room.ShowHangarConnectorInfo("Ангар 3", 2, Hangar1.GetConnectorsInfo());
                     break;
 
                 case UpdateType.Terminal:

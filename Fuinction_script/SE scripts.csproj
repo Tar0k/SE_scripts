@@ -9,7 +9,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="tests\Скрипт базы.cs" />
+    <Compile Remove="tests\Скрипт инвентарь.cs" />
+    <Compile Remove="tests\Скрипт переименование блоков.cs" />
+    <Compile Remove="tests\Скрипт энергия базы.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
+    <None Include="tests\Скрипт базы.cs" />
+    <None Include="tests\Скрипт инвентарь.cs" />
+    <None Include="tests\Скрипт переименование блоков.cs" />
+    <None Include="tests\Скрипт энергия базы.cs" />
   </ItemGroup>
 
   <ItemGroup>
