@@ -365,16 +365,20 @@ namespace Script5
         // TODO: Выделить методы и свойства двери и крыши в отдельный класс из класса HangarControl 
 
 
-        internal class ControlRoom
+        internal class ControlRoom: ISector
         {
             readonly Program _program;
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
             readonly IMyBlockGroup control_room_group;
             readonly List<IMyTextPanel> _hangar_displays = new List<IMyTextPanel>();
+            public string Sector_name { get; set; }
+            public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
 
             public ControlRoom(Program program, string controlRoomName)
             {
+
                 _program = program;
+                Sector_name = controlRoomName;
                 control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(controlRoomName);
                 control_room_group.GetBlocksOfType(_displays);
 
@@ -386,23 +390,29 @@ namespace Script5
                     display.TextPadding = 5;
                 }
 
-                _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar", StringComparison.Ordinal)).ToList();
+                _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar")).ToList();
             }
 
             //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара ( не доделано)
-            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<string, ShipInfo?> connectors_info)
+            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<string, ShipInfo> connectors_info)
             {
                 if (display_index < _hangar_displays.Count)
                 {
                     string text = $"{hangarName}\n";
-                    foreach (var connector_info in connectors_info)
+                    foreach (KeyValuePair<string, ShipInfo> connector_info in connectors_info)
                     {
-                        string ship_info = connector_info.Value != null ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
+                        string ship_info = connector_info.Value.ShipName != "НЕ ПОДКЛЮЧЕН" ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
                         text += $"{connector_info.Key}: {ship_info}\n";
                     }
 
                     _hangar_displays[display_index].WriteText(text, false);
                 }
+            }
+
+            // Заглушка для интерфейса надо потом разнести
+            // TODO: Убрать когда отпадет необходимость
+            public void Monitoring()
+            { 
             }
         }
 
@@ -460,18 +470,19 @@ namespace Script5
                 Monitoring();
             }
 
-            public Dictionary<string, ShipInfo?> GetConnectorsInfo()
+            public Dictionary<string, ShipInfo> GetConnectorsInfo()
+            // TODO: Есть баг, что если в одном ангаре будет 2 коннектора с одним именем то получится ошибка по ключу
             {
-                Dictionary<string, ShipInfo?> connectors_info = new Dictionary<string, ShipInfo?>();
+                Dictionary<string, ShipInfo> connectors_info = new Dictionary<string, ShipInfo>();
                 foreach (IMyShipConnector connector in hangar_connectors)
                 {
                     if (connector.Status == MyShipConnectorStatus.Connected)
                     {
-                        connectors_info.Add(connector.OtherConnector.CubeGrid.CustomName, new ShipInfo(connector.OtherConnector.CubeGrid.CustomName, 0, 0, 0, 0));
+                        connectors_info.Add(connector.CustomName, new ShipInfo(connector.OtherConnector.CubeGrid.CustomName, 0, 0, 0, 0));
                     }
                     else
                     {
-                        connectors_info.Add(connector.OtherConnector.CubeGrid.CustomName, null);
+                        connectors_info.Add(connector.CustomName, new ShipInfo("НЕ ПОДКЛЮЧЕН", 0, 0, 0, 0));
                     }
                 }
                 return connectors_info;
@@ -660,6 +671,7 @@ namespace Script5
             sectors.Add("hangar2", Hangar2);
             sectors.Add("hangar3", Hangar3);
             sectors.Add("production", Production);
+            sectors.Add("control room", control_room);
 
             alarm_system = new AlarmSystem(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
@@ -693,8 +705,8 @@ namespace Script5
                         sector.Monitoring();
                     }
                     control_room.ShowHangarConnectorInfo("Ангар 1", 0, Hangar1.GetConnectorsInfo());
-                    control_room.ShowHangarConnectorInfo("Ангар 2", 1, Hangar1.GetConnectorsInfo());
-                    control_room.ShowHangarConnectorInfo("Ангар 3", 2, Hangar1.GetConnectorsInfo());
+                    control_room.ShowHangarConnectorInfo("Ангар 2", 1, Hangar2.GetConnectorsInfo());
+                    control_room.ShowHangarConnectorInfo("Ангар 3", 2, Hangar3.GetConnectorsInfo());
                     break;
 
                 case UpdateType.Terminal:
