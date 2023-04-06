@@ -99,6 +99,7 @@ namespace Script5
             }
         }
 
+        // Класс управления воротами
         internal class GateControl : IGate
         {
             public string Gate_state { get; set; }
@@ -110,16 +111,15 @@ namespace Script5
                 Gate_state = "NA";
             }
 
-
-            public void OpenGate() => _gate_doors.ForEach(door => door.OpenDoor());
             // Откр. ворота
+            public void OpenGate() => _gate_doors.ForEach(door => door.OpenDoor());
 
-            public void CloseGate() => _gate_doors.ForEach(door => door.CloseDoor());
             // Закр. ворота
+            public void CloseGate() => _gate_doors.ForEach(door => door.CloseDoor());
 
 
-            public void ToggleGate()
             // Откр./Закр. ворота
+            public void ToggleGate()
             {
                 switch (Gate_state)
                 {
@@ -134,8 +134,9 @@ namespace Script5
                 }
             }
 
-            public void CheckGate()
             // Проверить состояние ворот на откр. или закр. и т.д.
+            public void CheckGate()
+            
             {
                 Gate_state = "NA";
 
@@ -161,14 +162,14 @@ namespace Script5
                 Roof_state = "NA";
             }
 
-            public void OpenRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0);
             // Открыть крышу
+            public void OpenRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0);
 
-            public void CloseRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0);
             // Закрыть крышу
+            public void CloseRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0);
 
-            public void ToggleRoof()
             // Откр./Закр. крышу
+            public void ToggleRoof()
             {
                 switch (Roof_state)
                 {
@@ -183,8 +184,8 @@ namespace Script5
                 }
             }
 
-            public void CheckRoof()
             // Проверить состояние крыши на откр. или закр. и т.д.
+            public void CheckRoof()
             {
                 Roof_state = "NA";
                 Roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count == _roof_hinges.Count ? "ЗАКРЫВАЮТСЯ" : Roof_state;
@@ -211,8 +212,9 @@ namespace Script5
                 }
             }
 
-            public void UpdateDisplays(string text, Color backgroundColor, Color fontColor)
             // Обновление содержимого дисплеев
+            public void UpdateDisplays(string text, Color backgroundColor, Color fontColor)
+
             {
                 foreach (IMyTextPanel display in _displays)
                 {
@@ -222,9 +224,9 @@ namespace Script5
                 }
             }
         }
-
+        
+        // Класс сообщения об ошибки
         internal class Alarm
-        // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
         {
             string alarm_text;
             string alarm_zone;
@@ -339,6 +341,8 @@ namespace Script5
         }
 
         #endregion
+
+        // Класс системы определния тревог
         internal class AlarmSystem
         {
             readonly Program _program;
@@ -543,10 +547,9 @@ namespace Script5
                 max_stored_power = batteries.Sum(battery => battery.MaxStoredPower);
             }
 
-
-
-            public void ShowStatus(string blockState, string blockName)
             // Отображение состояний на дисплеях и лампах.
+            public void ShowStatus(string blockState, string blockName)
+            
             {
                 switch (blockState)
                 {
@@ -573,8 +576,8 @@ namespace Script5
                 };
             }
 
-            private void ShowAlarm()
             // Отображение тревоги на дисплее и лампах
+            private void ShowAlarm()
             // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
             // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом.
             {
@@ -622,8 +625,9 @@ namespace Script5
                 }
             }
 
-            public void DisableAlarm()
             // Отключение тревоги
+            public void DisableAlarm()
+
             {
                 _alarm_timer = 0;
                 hangar_speakers.ForEach(speaker => speaker.Stop());
@@ -687,9 +691,8 @@ namespace Script5
                 }
             }
 
-
-            public void Monitoring()
             // Циклическая рутина контроля состояний и отображения статусов
+            public void Monitoring()
             // TODO: Подумать как привести в человеческий вид
             {
                 Roof1?.CheckRoof();
