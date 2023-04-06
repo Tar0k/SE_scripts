@@ -226,7 +226,6 @@ namespace Script5
         internal class Alarm
         // TODO: Расширить класс (текст тревоги, зона тревоги, уровень тревоги, текст звука тревоги)
         {
-
             string alarm_text;
             string alarm_zone;
             string alarm_sound;
@@ -281,7 +280,6 @@ namespace Script5
                 get { return _ship_name; }
                 set { _ship_name = value; }
             }
-
             public float BatteryLevel
             {
                 get { return _battery_level; }
@@ -305,7 +303,6 @@ namespace Script5
                 get { return _max_volume; }
                 set { _max_volume = value; }
             }
-
         }
 
         //Класс инфы об подключенном корабле и коннекторе
@@ -408,7 +405,7 @@ namespace Script5
                 //Пред. настройка дисплеев
                 foreach (IMyTextPanel display in _displays)
                 {
-                    display.FontSize = 2.0f;
+                    display.FontSize = 1.4f;
                     display.Alignment = TextAlignment.CENTER;
                     display.TextPadding = 5;
                 }
@@ -424,11 +421,18 @@ namespace Script5
                     string text = $"{hangarName}\n";
                     foreach (KeyValuePair<long, ConnectedShipInfo> connector_info in connectors_info)
                     {
-                        //string ship_info = connector_info.Value.ConnectorStatus != MyShipConnectorStatus.Connected ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
+                        text += "-----------------------------------------------------\n";
                         text += $"{connector_info.Value.ConnectorName}: {connector_info.Value.ConnectorStatus}\n";
-                        text += connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected ? $"{connector_info.Value.ShipName}\n" : "\n";
+                        if (connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected)
+                        {
+                            
+                            text += $"{connector_info.Value.ShipName}\n";
+                            double volume_in_percentage = Math.Round((double)connector_info.Value.CurrentVolume / connector_info.Value.MaxVolume * 100, 0);
+                            text += $"ТРЮМ: {volume_in_percentage}% ";
+                            double battery_in_percentage = Math.Round(connector_info.Value.BatteryLevel / connector_info.Value.MaxBatteryLevel * 100, 0);
+                            text += $"БАТАРЕИ: {battery_in_percentage}%\n";
+                        }
                     }
-
                     _hangar_displays[display_index].WriteText(text, false);
                 }
             }
