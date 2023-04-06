@@ -31,7 +31,6 @@ namespace Script5
     public sealed class Program : MyGridProgram
     {
 
-
         //------------START--------------
 
         #region Интерфейсы
@@ -260,54 +259,78 @@ namespace Script5
 
         //Класс инфы об корабле
         internal class ShipInfo
-            //TODO: Посмотреть, есть ли упрощенная запись. Слишком длинно.
+        //TODO: Посмотреть, есть ли упрощенная запись. Слишком длинно.
         {
-            string ship_name;
-            float battery_level;
-            float max_battery_level;
-            float current_capacity;
-            float max_capacity;
+            string _ship_name;
+            float _battery_level;
+            float _max_battery_level;
+            readonly long _current_volume;
+            long _max_volume;
 
-            public ShipInfo(string ShipName, float BatteryLevel, float MaxBatteryLevel, float CurrentCapacity, float MaxCapacity)
+            public ShipInfo(string ShipName = "NA", float BatteryLevel = 0, float MaxBatteryLevel = 0, long CurrentVolume = 0, long MaxVolume = 0)
             {
-                ship_name = ShipName;
-                battery_level = BatteryLevel;
-                max_battery_level = MaxBatteryLevel;
-                max_capacity = MaxCapacity;
-                current_capacity = CurrentCapacity;
+                _ship_name = ShipName;
+                _battery_level = BatteryLevel;
+                _max_battery_level = MaxBatteryLevel;
+                _max_volume = MaxVolume;
+                _current_volume = CurrentVolume;
             }
 
             public string ShipName
             {
-                get { return ship_name; }
-                set { ship_name = value; }
+                get { return _ship_name; }
+                set { _ship_name = value; }
             }
 
             public float BatteryLevel
             {
-                get { return battery_level; }
-                set { battery_level = value; }
+                get { return _battery_level; }
+                set { _battery_level = value; }
             }
 
             public float MaxBatteryLevel
             {
-                get { return max_battery_level; }
-                set { max_battery_level = value; }
+                get { return _max_battery_level; }
+                set { _max_battery_level = value; }
             }
 
-            public float CurrentCapacity
+            public long CurrentVolume
             {
-                get { return current_capacity; }
-                set { current_capacity = value; }
+                get { return _current_volume; }
+                set { _max_volume = value; }
             }
 
-            public float MaxCapacity
+            public long MaxVolume
             {
-                get { return max_capacity; }
-                set { max_capacity = value; }
+                get { return _max_volume; }
+                set { _max_volume = value; }
             }
 
         }
+
+        //Класс инфы об подключенном корабле и коннекторе
+        internal class ConnectedShipInfo : ShipInfo
+        {
+            readonly string connector_name;
+            readonly MyShipConnectorStatus connector_status;
+
+            public ConnectedShipInfo(string ConnectorName, MyShipConnectorStatus ConnectorStatus, string ShipName = "NA", float BatteryLevel = 0, float MaxBatteryLevel = 0, long CurrentVolume = 0, long MaxVolume = 0) : base(ShipName, BatteryLevel, MaxBatteryLevel, CurrentVolume, MaxVolume)
+            {
+                connector_name = ConnectorName;
+                connector_status = ConnectorStatus;
+            }
+
+            public string ConnectorName
+            {
+                get { return connector_name; }
+            }
+
+            public MyShipConnectorStatus ConnectorStatus
+            {
+                get { return connector_status; }
+            }
+        }
+
         #endregion
 
 
@@ -365,7 +388,7 @@ namespace Script5
         // TODO: Выделить методы и свойства двери и крыши в отдельный класс из класса HangarControl 
 
 
-        internal class ControlRoom: ISector
+        internal class ControlRoom : ISector
         {
             readonly Program _program;
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
@@ -393,16 +416,17 @@ namespace Script5
                 _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar")).ToList();
             }
 
-            //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара ( не доделано)
-            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<string, ShipInfo> connectors_info)
+            //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара
+            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<long, ConnectedShipInfo> connectors_info)
             {
                 if (display_index < _hangar_displays.Count)
                 {
                     string text = $"{hangarName}\n";
-                    foreach (KeyValuePair<string, ShipInfo> connector_info in connectors_info)
+                    foreach (KeyValuePair<long, ConnectedShipInfo> connector_info in connectors_info)
                     {
-                        string ship_info = connector_info.Value.ShipName != "НЕ ПОДКЛЮЧЕН" ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
-                        text += $"{connector_info.Key}: {ship_info}\n";
+                        //string ship_info = connector_info.Value.ConnectorStatus != MyShipConnectorStatus.Connected ? connector_info.Value.ShipName : "НЕ ПОДКЛЮЧЕН";
+                        text += $"{connector_info.Value.ConnectorName}: {connector_info.Value.ConnectorStatus}\n";
+                        text += connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected ? $"{connector_info.Value.ShipName}\n" : "\n";
                     }
 
                     _hangar_displays[display_index].WriteText(text, false);
@@ -412,7 +436,7 @@ namespace Script5
             // Заглушка для интерфейса надо потом разнести
             // TODO: Убрать когда отпадет необходимость
             public void Monitoring()
-            { 
+            {
             }
         }
 
@@ -470,23 +494,52 @@ namespace Script5
                 Monitoring();
             }
 
-            public Dictionary<string, ShipInfo> GetConnectorsInfo()
-            // TODO: Есть баг, что если в одном ангаре будет 2 коннектора с одним именем то получится ошибка по ключу
+            public Dictionary<long, ConnectedShipInfo> GetConnectorsInfo()
+            // TODO: Подумать как упростить
             {
-                Dictionary<string, ShipInfo> connectors_info = new Dictionary<string, ShipInfo>();
+                Dictionary<long, ConnectedShipInfo> connectors_info = new Dictionary<long, ConnectedShipInfo>();
                 foreach (IMyShipConnector connector in hangar_connectors)
                 {
                     if (connector.Status == MyShipConnectorStatus.Connected)
                     {
-                        connectors_info.Add(connector.CustomName, new ShipInfo(connector.OtherConnector.CubeGrid.CustomName, 0, 0, 0, 0));
+                        long current_volume = 0;
+                        long max_volume = 0;
+                        GetConnectedShipVolume(connector.OtherConnector, ref current_volume, ref max_volume);
+                        float current_power = 0;
+                        float max_power = 0;
+                        GetConnectedShipBattery(connector.OtherConnector, ref current_power, ref max_power);
+                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status,
+                                                                                    connector.OtherConnector.CubeGrid.CustomName,
+                                                                                    current_power, max_power,
+                                                                                    current_volume, max_volume));
                     }
                     else
                     {
-                        connectors_info.Add(connector.CustomName, new ShipInfo("НЕ ПОДКЛЮЧЕН", 0, 0, 0, 0));
+                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status));
                     }
                 }
                 return connectors_info;
             }
+
+            private void GetConnectedShipVolume(IMyTerminalBlock reference_block, ref long current_volume, ref long max_volume)
+            {
+                List<IMyTerminalBlock> blocks_with_inventory = new List<IMyTerminalBlock>();
+                _program.GridTerminalSystem.GetBlocksOfType(blocks_with_inventory, block => block.IsSameConstructAs(reference_block) && block.HasInventory);
+
+                List<IMyInventory> containers = blocks_with_inventory.Select(block => block.GetInventory()).ToList();
+                current_volume = containers.Sum(container => container.CurrentVolume.RawValue);
+                max_volume = containers.Sum(container => container.MaxVolume.RawValue);
+            }
+
+            private void GetConnectedShipBattery(IMyTerminalBlock reference_block, ref float current_stored_power, ref float max_stored_power)
+            {
+                List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
+                _program.GridTerminalSystem.GetBlocksOfType(batteries, block => block.IsSameConstructAs(reference_block));
+                current_stored_power = batteries.Sum(battery => battery.CurrentStoredPower);
+                max_stored_power = batteries.Sum(battery => battery.MaxStoredPower);
+            }
+
+
 
             public void ShowStatus(string blockState, string blockName)
             // Отображение состояний на дисплеях и лампах.
