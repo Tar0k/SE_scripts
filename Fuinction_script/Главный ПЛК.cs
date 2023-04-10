@@ -577,7 +577,7 @@ namespace Script5
             readonly bool _has_door;
             readonly bool _has_roof;
             int _alarm_timer;
-            int _alarm_message_duration = 0;
+            int _alarm_message_duration;
             internal GateControl Gate1 { get; }
             internal RoofControl Roof1 { get; }
             internal LightControl Lights { get; }
