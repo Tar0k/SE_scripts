@@ -76,7 +76,13 @@ namespace Script5
                 }
             }
 
-            // Вкл./Выкл. свет в ангаре
+            // Вкл. свет
+            public void TurnOnLights() => _lights.ForEach(light => light.Enabled = true);
+
+            // Выкл. свет
+            public void TurnOffLights() => _lights.ForEach(light => light.Enabled = false);
+
+            // Вкл./Выкл. свет
             public void ToggleLights() => _lights.ForEach(light => light.Enabled = !light.Enabled);
 
             // Обновление цвета ламп и режима моргания
@@ -136,7 +142,7 @@ namespace Script5
 
             // Проверить состояние ворот на откр. или закр. и т.д.
             public void CheckGate()
-            
+
             {
                 Gate_state = "NA";
 
@@ -224,7 +230,7 @@ namespace Script5
                 }
             }
         }
-        
+
         // Класс сообщения об ошибки
         internal class Alarm
         {
@@ -330,6 +336,42 @@ namespace Script5
             }
         }
 
+        internal class EnergyInfo
+        {
+            readonly int batteries_level;
+            readonly int hydrogen_level;
+            readonly int oxygen_level;
+            readonly int power_load;
+
+            public EnergyInfo(int BatteriesLevel, int HydrogenLevel, int OxygenLevel, int PowerLoad)
+            {
+                batteries_level = BatteriesLevel;
+                hydrogen_level = HydrogenLevel;
+                oxygen_level = OxygenLevel;
+                power_load = PowerLoad;
+            }
+
+            public int BatteriesLevel
+            {
+                get { return batteries_level; }
+            }
+
+            public int HydrogenLevel
+            {
+                get { return hydrogen_level; }
+            }
+
+            public int OxygenLevel
+            {
+                get { return oxygen_level; }
+            }
+
+            public int PowerLoad
+            {
+                get { return power_load; }
+            }
+        }
+
         #endregion
 
 
@@ -385,8 +427,54 @@ namespace Script5
         }
 
         // TODO: Написать класс, который бы описывал объекты в производственном секторе
-        // TODO: Написать класс, который бы описывал объекты генерации энергии и ее потребление
-        // TODO: Выделить методы и свойства двери и крыши в отдельный класс из класса HangarControl 
+        // TODO: Написать класс, который бы описывал объекты генерации энергии и ее потребление 
+
+        internal class EnergySystem
+        {
+            readonly Program _program;
+            readonly List<IMyPowerProducer> _power_producers = new List<IMyPowerProducer>();
+            readonly List<IMyBatteryBlock> _batteries = new List<IMyBatteryBlock>();
+            readonly List<IMyTerminalBlock> _hydrogen_engines = new List<IMyTerminalBlock>();
+            readonly List<IMyGasTank> _hydrogen_tanks = new List<IMyGasTank>();
+            readonly List<IMyGasTank> _oxygen_tanks = new List<IMyGasTank>();
+
+            public EnergySystem(Program program)
+            {
+                _program = program;
+                _program.GridTerminalSystem.GetBlocksOfType(_power_producers, producer => producer.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_batteries, battery => battery.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_engines, engine => engine.BlockDefinition.SubtypeName == "LargeHydrogenEngine" && engine.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_tanks, tank => (tank.BlockDefinition.SubtypeName == "LargeHydrogenTank" || tank.BlockDefinition.SubtypeName == "LargeHydrogenTankIndustrial") && tank.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_oxygen_tanks, tank => tank.BlockDefinition.SubtypeName.Length == 0 && tank.IsSameConstructAs(_program.Me));
+            }
+
+            private int GetBatteryLevel()
+            {
+                float current_stored_power = _batteries.Sum(battery => battery.CurrentStoredPower);
+                float max_stored_power = _batteries.Sum(battery => battery.MaxStoredPower);
+                int battery_in_percentage = (int)Math.Round((double)current_stored_power / max_stored_power * 100, 0);
+                return battery_in_percentage;
+            }
+
+            private static int GetTanksLevel<T>(List<T> tanks) where T: IMyGasTank
+            {
+                int filled_ratio = (int)Math.Round((tanks.Sum(tank => tank.FilledRatio)) / tanks.Count * 100, 2);
+                return filled_ratio;
+            }
+
+            private int GetHydrogenTanksLevel() => GetTanksLevel(_hydrogen_tanks);
+            private int GetOxygenTanksLevel() => GetTanksLevel(_oxygen_tanks);
+
+            private int GetPowerLoad()
+            {
+                float current_output = _power_producers.Sum(producer => producer.CurrentOutput);
+                float max_output = _power_producers.Sum(producer => producer.MaxOutput);
+                return (int)Math.Round(current_output / max_output * 100, 2);
+            }
+
+            public EnergyInfo GetEnergyInfo() => new EnergyInfo(GetBatteryLevel(), GetHydrogenTanksLevel(), GetOxygenTanksLevel(), GetPowerLoad());
+
+        }
 
 
         internal class ControlRoom : ISector
@@ -395,6 +483,9 @@ namespace Script5
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
             readonly IMyBlockGroup control_room_group;
             readonly List<IMyTextPanel> _hangar_displays = new List<IMyTextPanel>();
+            readonly List<IMyLightingBlock> _room_lights = new List<IMyLightingBlock>();
+            readonly IMyTextPanel _power_display;
+            internal LightControl Lights { get; }
             public string Sector_name { get; set; }
             public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
 
@@ -405,6 +496,9 @@ namespace Script5
                 Sector_name = controlRoomName;
                 control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(controlRoomName);
                 control_room_group.GetBlocksOfType(_displays);
+                control_room_group.GetBlocksOfType(_room_lights);
+
+                Lights = new LightControl(_room_lights);
 
                 //Пред. настройка дисплеев
                 foreach (IMyTextPanel display in _displays)
@@ -415,6 +509,20 @@ namespace Script5
                 }
 
                 _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar")).ToList();
+                _power_display = _displays.Find(display => display.CustomData.Contains("power"));
+            }
+
+            public void ShowEnergyStatus(EnergyInfo energy_info)
+            {
+                if (_power_display != null)
+                {
+                    string text = "";
+                    text += $"Батареи: {energy_info.BatteriesLevel}%\n";
+                    text += $"Водородные баки: {energy_info.HydrogenLevel}%\n";
+                    text += $"Кислородные баки: {energy_info.OxygenLevel}%\n";
+                    text += $"Нагрузка сети: {energy_info.PowerLoad}%\n";
+                    _power_display.WriteText(text, false);
+                }
             }
 
             //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара
@@ -429,7 +537,7 @@ namespace Script5
                         text += $"{connector_info.Value.ConnectorName}: {connector_info.Value.ConnectorStatus}\n";
                         if (connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected)
                         {
-                            
+
                             text += $"{connector_info.Value.ShipName}\n";
                             double volume_in_percentage = Math.Round((double)connector_info.Value.CurrentVolume / connector_info.Value.MaxVolume * 100, 0);
                             text += $"ТРЮМ: {volume_in_percentage}% ";
@@ -549,7 +657,7 @@ namespace Script5
 
             // Отображение состояний на дисплеях и лампах.
             public void ShowStatus(string blockState, string blockName)
-            
+
             {
                 switch (blockState)
                 {
@@ -606,7 +714,7 @@ namespace Script5
                     {
                         speaker.Stop();
                         speaker.SelectedSound = sound;
-                        speaker.LoopPeriod = 3;
+                        speaker.LoopPeriod = 60;
                         speaker.Play();
                     }
                 }
@@ -719,6 +827,7 @@ namespace Script5
         private readonly HangarControl Production;
         private readonly AlarmSystem alarm_system;
         private readonly ControlRoom control_room;
+        private readonly EnergySystem Energy;
 
         public Program()
         {
@@ -727,6 +836,7 @@ namespace Script5
             Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
             Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
             Production = new HangarControl(this, "Производство");
+            Energy = new EnergySystem(this);
             sectors.Add("hangar1", Hangar1);
             sectors.Add("hangar2", Hangar2);
             sectors.Add("hangar3", Hangar3);
@@ -744,7 +854,6 @@ namespace Script5
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
-                    // !!!ВЫПОЛНЕНО!!! TODO: Передавать в класс сектора не только текст ошибки, а список ошибок касающийся только сектора
                     if (alarm_system.DetectAlarms())
                     {
                         foreach (ISector sector in sectors.Values)
@@ -767,6 +876,7 @@ namespace Script5
                     control_room.ShowHangarConnectorInfo("Ангар 1", 0, Hangar1.GetConnectorsInfo());
                     control_room.ShowHangarConnectorInfo("Ангар 2", 1, Hangar2.GetConnectorsInfo());
                     control_room.ShowHangarConnectorInfo("Ангар 3", 2, Hangar3.GetConnectorsInfo());
+                    control_room.ShowEnergyStatus(Energy.GetEnergyInfo());
                     break;
 
                 case UpdateType.Terminal:
@@ -803,6 +913,9 @@ namespace Script5
                             break;
                         case "hangar3 toggle_roof":
                             Hangar3.Roof1.ToggleRoof();
+                            break;
+                        case "control_room toggle_light":
+                            control_room.Lights.ToggleLights();
                             break;
                     }
                     break;
