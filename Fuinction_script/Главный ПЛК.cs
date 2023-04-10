@@ -232,6 +232,7 @@ namespace Script5
         }
 
         // Класс сообщения об ошибки
+        // TODO: Добавить длительность сообщения в тиках.
         internal class Alarm
         {
             string alarm_text;
@@ -576,6 +577,7 @@ namespace Script5
             readonly bool _has_door;
             readonly bool _has_roof;
             int _alarm_timer;
+            int _alarm_message_duration = 0;
             internal GateControl Gate1 { get; }
             internal RoofControl Roof1 { get; }
             internal LightControl Lights { get; }
@@ -688,6 +690,8 @@ namespace Script5
             private void ShowAlarm()
             // !!!ВЫПОЛНЕНО!!! TODO: Подумать как передавать объект Alarm из списка тревог Alarm System и правильно его здесь обрабатывать
             // TODO: Отображать не только 1-ю ошибку в списке, а все друг за другом.
+            // TODO: Добавить возможность задавать длительнось сообщения тревоги динамически, а не фиксировано как сейчас.
+            // TODO: Вынести всю обработку тревоги в отдельный класс
             {
                 string alarm_text = Alarm_list[0].Text;
                 string sound = Alarm_list[0].Sound;
@@ -717,19 +721,25 @@ namespace Script5
                         speaker.LoopPeriod = 60;
                         speaker.Play();
                     }
+                    _alarm_message_duration = 0;
                 }
                 // Пищалка тревоги
                 else if (_mem_alarm_number != 0)
                 {
-                    foreach (IMySoundBlock speaker in hangar_speakers)
+                    if (_alarm_message_duration > 1)
                     {
-                        if (speaker.SelectedSound == sound)
+                        foreach (IMySoundBlock speaker in hangar_speakers)
                         {
-                            speaker.SelectedSound = "SoundBlockAlert2";
-                            speaker.LoopPeriod = 60;
-                            speaker.Play();
+                            if (speaker.SelectedSound == sound || speaker.SelectedSound == "Arc" + sound)
+                            {
+                                speaker.SelectedSound = "SoundBlockAlert2";
+                                speaker.LoopPeriod = 60;
+                                speaker.Play();
+                            }
                         }
+                        
                     }
+                    else _alarm_message_duration += 1;
                 }
             }
 
@@ -741,8 +751,7 @@ namespace Script5
                 hangar_speakers.ForEach(speaker => speaker.Stop());
             }
 
-            // TODO: Придумать, как использовать один метод вместо 2-х ShowRoofState почти одинаковых прегрузок
-            private static void ShowRoofState(IMyTextSurface display, List<IMyMotorAdvancedStator> hinges, string roof_state)
+            private static void ShowRoofState<T>(T display, List<IMyMotorAdvancedStator> hinges, string roof_state) where T : IMyTextSurface
             {
                 display.WriteText($"{roof_state}\n", false);
                 foreach (IMyMotorAdvancedStator hinge in hinges)
@@ -751,17 +760,7 @@ namespace Script5
                 }
             }
 
-            private static void ShowRoofState(IMyTextPanel display, List<IMyMotorAdvancedStator> hinges, string roof_state)
-            {
-                display.WriteText($"{roof_state}\n", false);
-                foreach (IMyMotorAdvancedStator hinge in hinges)
-                {
-                    display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true);
-                }
-            }
-
-            // TODO: Придумать, как использовать один метод вместо 2-х ShowDoorState почти одинаковых прегрузок
-            private static void ShowDoorState(IMyTextPanel display, List<IMyAirtightHangarDoor> doors, string door_state)
+            private static void ShowDoorState<T>(T display, List<IMyAirtightHangarDoor> doors, string door_state) where T : IMyTextSurface
             {
                 display.WriteText($"{door_state}\n", false);
                 foreach (IMyAirtightHangarDoor door in doors)
@@ -770,14 +769,6 @@ namespace Script5
                 }
             }
 
-            private static void ShowDoorState(IMyTextSurface display, List<IMyAirtightHangarDoor> doors, string door_state)
-            {
-                display.WriteText($"{door_state}\n", false);
-                foreach (IMyAirtightHangarDoor door in doors)
-                {
-                    display.WriteText($"{door.CustomName}: {door.Status}\n", true);
-                }
-            }
 
             // TODO: Не тестирован, нужно имплементировать куда-то для теста
             public void ShowOnDisplay(IMyTextPanel display)
