@@ -704,9 +704,6 @@ namespace Script9
             }
 
 
-            private ShipInfo GetConnectedShipInfo(IMyTerminalBlock reference_block) => new ShipInfo(_program, reference_block);
-
-
             // Отображение состояний на дисплеях и лампах.
             public void ShowStatus(string blockState, string blockName)
 
@@ -874,10 +871,10 @@ namespace Script9
         {
             control_room = new ControlRoom(this, "ЦУП");
             Hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
-            Energy = new EnergySystem(this, Me);
+            Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
             Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
             Production = new HangarControl(this, "Производство");
-            Energy = new EnergySystem(this);
+            Energy = new EnergySystem(this, Me);
             sectors.Add("hangar1", Hangar1);
             sectors.Add("hangar2", Hangar2);
             sectors.Add("hangar3", Hangar3);
