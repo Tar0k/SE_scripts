@@ -19,14 +19,12 @@ using Sandbox.Game.Lights;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using VRage.Voxels.Mesh;
-using static Script5.Program;
 using VRage.Scripting;
-using static Script5.Program.AlarmSystem;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography.X509Certificates;
 
-namespace Script5
+namespace Script9
 {
     public sealed class Program : MyGridProgram
     {
@@ -265,65 +263,99 @@ namespace Script5
             }
         }
 
+        internal class InventorySystem
+        {
+            readonly Program _program;
+            readonly List<IMyTerminalBlock> _blocks_with_inventory = new List<IMyTerminalBlock>();
+            readonly List<IMyCargoContainer> _cargo_containers = new List<IMyCargoContainer>();
+            readonly List<IMyInventory> _all_inventories = new List<IMyInventory>();
+            readonly List<IMyInventory> _containers_inventories = new List<IMyInventory>();
+
+            public InventorySystem(Program program, IMyTerminalBlock reference_block)
+            {
+                _program = program;
+                _program.GridTerminalSystem.GetBlocksOfType(_blocks_with_inventory, block => block.IsSameConstructAs(reference_block) && block.HasInventory);
+                _cargo_containers = _blocks_with_inventory.OfType<IMyCargoContainer>().ToList();
+                _all_inventories = _blocks_with_inventory.Select(block => block.GetInventory()).ToList();
+                _containers_inventories = _cargo_containers.Select(block => block.GetInventory()).ToList();
+            }
+
+            public double GetTotalCurrentVolume() => SumCurrentVolumes(_all_inventories);
+            public double GetTotalMaxVolume() => SumMaxVolumes(_all_inventories);
+
+            public int GetTotalFilledRatio() => FilledRatio(GetTotalCurrentVolume(), GetTotalMaxVolume());
+
+            public double GetCargoCurrentVolume() => SumCurrentVolumes(_containers_inventories);
+            public double GetCargoMaxVolume() => SumMaxVolumes(_containers_inventories);
+
+            public int GetCargoFilledRatio() => FilledRatio(GetCargoCurrentVolume(), GetCargoMaxVolume());
+
+            private static double SumCurrentVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.CurrentVolume.RawValue);
+            private static double SumMaxVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.MaxVolume.RawValue);
+            private static int FilledRatio(double current_value, double max_value) => (int)Math.Round(current_value / max_value * 100, 2);
+        }
+
+
+
         //Класс инфы об корабле
         internal class ShipInfo
         //TODO: Посмотреть, есть ли упрощенная запись. Слишком длинно.
         {
-            string _ship_name;
-            float _battery_level;
-            float _max_battery_level;
-            readonly long _current_volume;
-            long _max_volume;
+            readonly EnergySystem _ship_energy_system;
+            readonly InventorySystem _ship_inventory_system;
+            readonly string _ship_name;
 
-            public ShipInfo(string ShipName = "NA", float BatteryLevel = 0, float MaxBatteryLevel = 0, long CurrentVolume = 0, long MaxVolume = 0)
+            public ShipInfo(Program program, IMyTerminalBlock reference_block)
             {
-                _ship_name = ShipName;
-                _battery_level = BatteryLevel;
-                _max_battery_level = MaxBatteryLevel;
-                _max_volume = MaxVolume;
-                _current_volume = CurrentVolume;
+                _ship_name = reference_block.CubeGrid.CustomName;
+                _ship_energy_system = new EnergySystem(program, reference_block);
+                _ship_inventory_system = new InventorySystem(program, reference_block);
             }
 
             public string ShipName
             {
                 get { return _ship_name; }
-                set { _ship_name = value; }
             }
-            public float BatteryLevel
+            public int BatteryLevel
             {
-                get { return _battery_level; }
-                set { _battery_level = value; }
+                get { return _ship_energy_system.GetBatteryLevel(); }
             }
 
-            public float MaxBatteryLevel
+            public int HydrogenLevel
             {
-                get { return _max_battery_level; }
-                set { _max_battery_level = value; }
+                get { return _ship_energy_system.GetHydrogenTanksLevel(); }
             }
 
-            public long CurrentVolume
+            public int OxygenLevel
             {
-                get { return _current_volume; }
-                set { _max_volume = value; }
+                get { return _ship_energy_system.GetOxygenTanksLevel(); }
             }
 
-            public long MaxVolume
+            public int CargoHoldTotalFilledRatio
             {
-                get { return _max_volume; }
-                set { _max_volume = value; }
+                get { return _ship_inventory_system.GetTotalFilledRatio(); }
             }
+
+            public int CargoHoldContainersFilledRatio
+            {
+                get { return _ship_inventory_system.GetCargoFilledRatio(); }
+            }
+
         }
 
         //Класс инфы об подключенном корабле и коннекторе
-        internal class ConnectedShipInfo : ShipInfo
+        internal class ConnectedShipInfo
         {
             readonly string connector_name;
             readonly MyShipConnectorStatus connector_status;
+            readonly ShipInfo ship_info;
 
-            public ConnectedShipInfo(string ConnectorName, MyShipConnectorStatus ConnectorStatus, string ShipName = "NA", float BatteryLevel = 0, float MaxBatteryLevel = 0, long CurrentVolume = 0, long MaxVolume = 0) : base(ShipName, BatteryLevel, MaxBatteryLevel, CurrentVolume, MaxVolume)
+            public ConnectedShipInfo(string ConnectorName, MyShipConnectorStatus ConnectorStatus, Program program, IMyTerminalBlock reference_block = null)
             {
                 connector_name = ConnectorName;
                 connector_status = ConnectorStatus;
+
+                if (reference_block != null) ship_info = new ShipInfo(program, reference_block);
             }
 
             public string ConnectorName
@@ -334,6 +366,11 @@ namespace Script5
             public MyShipConnectorStatus ConnectorStatus
             {
                 get { return connector_status; }
+            }
+
+            public ShipInfo ShipInfo
+            {
+                get { return ship_info; }
             }
         }
 
@@ -438,36 +475,74 @@ namespace Script5
             readonly List<IMyTerminalBlock> _hydrogen_engines = new List<IMyTerminalBlock>();
             readonly List<IMyGasTank> _hydrogen_tanks = new List<IMyGasTank>();
             readonly List<IMyGasTank> _oxygen_tanks = new List<IMyGasTank>();
+            private readonly string[] _hydrogen_tanks_subtypes = { "LargeHydrogenTank", "LargeHydrogenTankIndustrial", "SmallHydrogenTankSmall", "LargeHydrogenTankSmall", "SmallHydrogenTank" };
+            private readonly string[] _oxygen_tanks_subtypes = { "", "OxygenTankSmall" };
 
-            public EnergySystem(Program program)
+            public EnergySystem(Program program, IMyTerminalBlock reference_block)
             {
                 _program = program;
-                _program.GridTerminalSystem.GetBlocksOfType(_power_producers, producer => producer.IsSameConstructAs(_program.Me));
-                _program.GridTerminalSystem.GetBlocksOfType(_batteries, battery => battery.IsSameConstructAs(_program.Me));
-                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_engines, engine => engine.BlockDefinition.SubtypeName == "LargeHydrogenEngine" && engine.IsSameConstructAs(_program.Me));
-                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_tanks, tank => (tank.BlockDefinition.SubtypeName == "LargeHydrogenTank" || tank.BlockDefinition.SubtypeName == "LargeHydrogenTankIndustrial") && tank.IsSameConstructAs(_program.Me));
-                _program.GridTerminalSystem.GetBlocksOfType(_oxygen_tanks, tank => tank.BlockDefinition.SubtypeName.Length == 0 && tank.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_power_producers, producer => producer.IsSameConstructAs(reference_block));
+                _program.GridTerminalSystem.GetBlocksOfType(_batteries, battery => battery.IsSameConstructAs(reference_block));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_engines, engine => engine.BlockDefinition.SubtypeName == "LargeHydrogenEngine" && engine.IsSameConstructAs(reference_block));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_tanks, tank => _hydrogen_tanks_subtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(reference_block));
+                _program.GridTerminalSystem.GetBlocksOfType(_oxygen_tanks, tank => _oxygen_tanks_subtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(reference_block));
             }
 
-            private int GetBatteryLevel()
+            public float GetBatteryStoredPower()
             {
+                if (_batteries.Count == 0) return 0;
                 float current_stored_power = _batteries.Sum(battery => battery.CurrentStoredPower);
+                return current_stored_power;
+            }
+
+            public float GetBatteryMaxStoredPower()
+            {
+                if (_batteries.Count == 0) return 0;
                 float max_stored_power = _batteries.Sum(battery => battery.MaxStoredPower);
-                int battery_in_percentage = (int)Math.Round((double)current_stored_power / max_stored_power * 100, 0);
+                return max_stored_power;
+            }
+
+            public int GetBatteryLevel()
+            {
+                if (_batteries.Count == 0) return 0;
+                int battery_in_percentage = (int)Math.Round(GetBatteryStoredPower() / GetBatteryMaxStoredPower() * 100, 0);
                 return battery_in_percentage;
             }
 
-            private static int GetTanksLevel<T>(List<T> tanks) where T: IMyGasTank
+            private static int GetTanksLevel<T>(List<T> tanks) where T : IMyGasTank
             {
+                if (tanks.Count == 0) return 0;
                 int filled_ratio = (int)Math.Round((tanks.Sum(tank => tank.FilledRatio)) / tanks.Count * 100, 2);
                 return filled_ratio;
             }
 
-            private int GetHydrogenTanksLevel() => GetTanksLevel(_hydrogen_tanks);
-            private int GetOxygenTanksLevel() => GetTanksLevel(_oxygen_tanks);
-
-            private int GetPowerLoad()
+            private static double GetTanksCurrentVolume<T>(List<T> tanks) where T : IMyGasTank
             {
+                if (tanks.Count == 0) return 0;
+                double current_volume = tanks.Sum(tank => tank.FilledRatio * tank.Capacity);
+                return current_volume;
+            }
+
+            private static double GetTanksMaxVolume<T>(List<T> tanks) where T : IMyGasTank
+            {
+                if (tanks.Count == 0) return 0;
+                double max_volume = tanks.Sum(tank => tank.Capacity);
+                return max_volume;
+            }
+
+
+            public int GetHydrogenTanksLevel() => GetTanksLevel(_hydrogen_tanks);
+            public int GetOxygenTanksLevel() => GetTanksLevel(_oxygen_tanks);
+
+            public double GetHydrogenTanksCurrentVolume() => GetTanksCurrentVolume(_hydrogen_tanks);
+            public double GetHydrogenTanksMaxVolume() => GetTanksMaxVolume(_hydrogen_tanks);
+
+            public double GetOxygenTanksCurrentVolume() => GetTanksCurrentVolume(_oxygen_tanks);
+            public double GetOxygenTanksMaxVolume() => GetTanksMaxVolume(_oxygen_tanks);
+
+            public int GetPowerLoad()
+            {
+                if (_power_producers.Count == 0) return 0;
                 float current_output = _power_producers.Sum(producer => producer.CurrentOutput);
                 float max_output = _power_producers.Sum(producer => producer.MaxOutput);
                 return (int)Math.Round(current_output / max_output * 100, 2);
@@ -532,18 +607,16 @@ namespace Script5
                 if (display_index < _hangar_displays.Count)
                 {
                     string text = $"{hangarName}\n";
-                    foreach (KeyValuePair<long, ConnectedShipInfo> connector_info in connectors_info)
+                    foreach (var connector_info in connectors_info)
                     {
                         text += "-----------------------------------------------------\n";
                         text += $"{connector_info.Value.ConnectorName}: {connector_info.Value.ConnectorStatus}\n";
                         if (connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected)
                         {
 
-                            text += $"{connector_info.Value.ShipName}\n";
-                            double volume_in_percentage = Math.Round((double)connector_info.Value.CurrentVolume / connector_info.Value.MaxVolume * 100, 0);
-                            text += $"ТРЮМ: {volume_in_percentage}% ";
-                            double battery_in_percentage = Math.Round(connector_info.Value.BatteryLevel / connector_info.Value.MaxBatteryLevel * 100, 0);
-                            text += $"БАТАРЕИ: {battery_in_percentage}%\n";
+                            text += $"{connector_info.Value.ShipInfo.ShipName}\n";
+                            text += $"ТРЮМ: {connector_info.Value.ShipInfo.CargoHoldTotalFilledRatio}% ";
+                            text += $"БАТАРЕИ: {connector_info.Value.ShipInfo.BatteryLevel}%\n";
                         }
                     }
                     _hangar_displays[display_index].WriteText(text, false);
@@ -620,42 +693,19 @@ namespace Script5
                 {
                     if (connector.Status == MyShipConnectorStatus.Connected)
                     {
-                        long current_volume = 0;
-                        long max_volume = 0;
-                        GetConnectedShipVolume(connector.OtherConnector, ref current_volume, ref max_volume);
-                        float current_power = 0;
-                        float max_power = 0;
-                        GetConnectedShipBattery(connector.OtherConnector, ref current_power, ref max_power);
-                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status,
-                                                                                    connector.OtherConnector.CubeGrid.CustomName,
-                                                                                    current_power, max_power,
-                                                                                    current_volume, max_volume));
+                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status, _program, connector.OtherConnector));
                     }
                     else
                     {
-                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status));
+                        connectors_info.Add(connector.EntityId, new ConnectedShipInfo(connector.CustomName, connector.Status, _program));
                     }
                 }
                 return connectors_info;
             }
 
-            private void GetConnectedShipVolume(IMyTerminalBlock reference_block, ref long current_volume, ref long max_volume)
-            {
-                List<IMyTerminalBlock> blocks_with_inventory = new List<IMyTerminalBlock>();
-                _program.GridTerminalSystem.GetBlocksOfType(blocks_with_inventory, block => block.IsSameConstructAs(reference_block) && block.HasInventory);
 
-                List<IMyInventory> containers = blocks_with_inventory.Select(block => block.GetInventory()).ToList();
-                current_volume = containers.Sum(container => container.CurrentVolume.RawValue);
-                max_volume = containers.Sum(container => container.MaxVolume.RawValue);
-            }
+            private ShipInfo GetConnectedShipInfo(IMyTerminalBlock reference_block) => new ShipInfo(_program, reference_block);
 
-            private void GetConnectedShipBattery(IMyTerminalBlock reference_block, ref float current_stored_power, ref float max_stored_power)
-            {
-                List<IMyBatteryBlock> batteries = new List<IMyBatteryBlock>();
-                _program.GridTerminalSystem.GetBlocksOfType(batteries, block => block.IsSameConstructAs(reference_block));
-                current_stored_power = batteries.Sum(battery => battery.CurrentStoredPower);
-                max_stored_power = batteries.Sum(battery => battery.MaxStoredPower);
-            }
 
             // Отображение состояний на дисплеях и лампах.
             public void ShowStatus(string blockState, string blockName)
@@ -824,7 +874,7 @@ namespace Script5
         {
             control_room = new ControlRoom(this, "ЦУП");
             Hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
-            Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
+            Energy = new EnergySystem(this, Me);
             Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
             Production = new HangarControl(this, "Производство");
             Energy = new EnergySystem(this);
