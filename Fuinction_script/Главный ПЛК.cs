@@ -143,7 +143,6 @@ namespace Script9
 
             {
                 Gate_state = "NA";
-
                 Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closing).Count == _gate_doors.Count ? "ЗАКРЫВАЮТСЯ" : Gate_state;
                 Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Opening).Count == _gate_doors.Count ? "ОТКРЫВАЮТСЯ" : Gate_state;
                 Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Open).Count == _gate_doors.Count ? "ОТКРЫТО" : Gate_state;
@@ -233,9 +232,9 @@ namespace Script9
         // TODO: Добавить длительность сообщения в тиках.
         internal class Alarm
         {
-            string alarm_text;
-            string alarm_zone;
-            string alarm_sound;
+            readonly string alarm_text;
+            readonly string alarm_zone;
+            readonly string alarm_sound;
 
             public Alarm(string alarmText, string alarmZone, string alarmSound)
             {
@@ -243,24 +242,9 @@ namespace Script9
                 alarm_zone = alarmZone;
                 alarm_sound = alarmSound;
             }
-
-            public string Text
-            {
-                get { return alarm_text; }
-                set { alarm_text = value; }
-            }
-
-            public string Zone
-            {
-                get { return alarm_zone; }
-                set { alarm_zone = value; }
-            }
-
-            public string Sound
-            {
-                get { return alarm_sound; }
-                set { alarm_sound = value; }
-            }
+            public string Text => alarm_text;
+            public string Zone => alarm_zone;
+            public string Sound => alarm_sound;
         }
 
         internal class InventorySystem
@@ -280,15 +264,12 @@ namespace Script9
                 _containers_inventories = _cargo_containers.Select(block => block.GetInventory()).ToList();
             }
 
-            public double GetTotalCurrentVolume() => SumCurrentVolumes(_all_inventories);
-            public double GetTotalMaxVolume() => SumMaxVolumes(_all_inventories);
-
-            public int GetTotalFilledRatio() => FilledRatio(GetTotalCurrentVolume(), GetTotalMaxVolume());
-
-            public double GetCargoCurrentVolume() => SumCurrentVolumes(_containers_inventories);
-            public double GetCargoMaxVolume() => SumMaxVolumes(_containers_inventories);
-
-            public int GetCargoFilledRatio() => FilledRatio(GetCargoCurrentVolume(), GetCargoMaxVolume());
+            public double CurrentVolumeTotal => SumCurrentVolumes(_all_inventories);
+            public double MaxVolumeTotal => SumMaxVolumes(_all_inventories);
+            public int FilledRatioTotal => FilledRatio(CurrentVolumeTotal, MaxVolumeTotal);
+            public double CurrentVolumeCargo => SumCurrentVolumes(_containers_inventories);
+            public double MaxVolumeCargo => SumMaxVolumes(_containers_inventories);
+            public int FilledRatioCargo => FilledRatio(CurrentVolumeCargo, MaxVolumeCargo);
 
             private static double SumCurrentVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.CurrentVolume.RawValue);
             private static double SumMaxVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.MaxVolume.RawValue);
@@ -312,34 +293,12 @@ namespace Script9
                 _ship_inventory_system = new InventorySystem(program, reference_block);
             }
 
-            public string ShipName
-            {
-                get { return _ship_name; }
-            }
-            public int BatteryLevel
-            {
-                get { return _ship_energy_system.GetBatteryLevel(); }
-            }
-
-            public int HydrogenLevel
-            {
-                get { return _ship_energy_system.GetHydrogenTanksLevel(); }
-            }
-
-            public int OxygenLevel
-            {
-                get { return _ship_energy_system.GetOxygenTanksLevel(); }
-            }
-
-            public int CargoHoldTotalFilledRatio
-            {
-                get { return _ship_inventory_system.GetTotalFilledRatio(); }
-            }
-
-            public int CargoHoldContainersFilledRatio
-            {
-                get { return _ship_inventory_system.GetCargoFilledRatio(); }
-            }
+            public string ShipName => _ship_name;
+            public int BatteryLevel => _ship_energy_system.BatteryLevel;
+            public int HydrogenLevel => _ship_energy_system.HydrogenTanksLevel;
+            public int OxygenLevel => _ship_energy_system.OxygenTanksLevel;
+            public int CargoHoldTotalFilledRatio => _ship_inventory_system.FilledRatioTotal;
+            public int CargoHoldContainersFilledRatio => _ship_inventory_system.FilledRatioCargo;
 
         }
 
@@ -354,24 +313,12 @@ namespace Script9
             {
                 connector_name = ConnectorName;
                 connector_status = ConnectorStatus;
-
                 if (reference_block != null) ship_info = new ShipInfo(program, reference_block);
             }
 
-            public string ConnectorName
-            {
-                get { return connector_name; }
-            }
-
-            public MyShipConnectorStatus ConnectorStatus
-            {
-                get { return connector_status; }
-            }
-
-            public ShipInfo ShipInfo
-            {
-                get { return ship_info; }
-            }
+            public string ConnectorName => connector_name;
+            public MyShipConnectorStatus ConnectorStatus => connector_status;
+            public ShipInfo ShipInfo => ship_info;
         }
 
         internal class EnergyInfo
@@ -389,25 +336,10 @@ namespace Script9
                 power_load = PowerLoad;
             }
 
-            public int BatteriesLevel
-            {
-                get { return batteries_level; }
-            }
-
-            public int HydrogenLevel
-            {
-                get { return hydrogen_level; }
-            }
-
-            public int OxygenLevel
-            {
-                get { return oxygen_level; }
-            }
-
-            public int PowerLoad
-            {
-                get { return power_load; }
-            }
+            public int BatteriesLevel => batteries_level;
+            public int HydrogenLevel => hydrogen_level;
+            public int OxygenLevel => oxygen_level;
+            public int PowerLoad => power_load;
         }
 
         #endregion
@@ -446,10 +378,7 @@ namespace Script9
                 return warhead_detected;
             }
             // TODO: Метод на поднятие тревоги если у турелей цель (НЕ ПРОВЕРЕН до конца. Есть подозрение, что не работает из-за WeaponCore)
-            private bool Enemy_detected()
-            {
-                return turrets.FindAll(turret => turret.HasTarget).Count > 0;
-            }
+            private bool Enemy_detected() => turrets.FindAll(turret => turret.HasTarget).Count > 0;
 
             // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе.
             // Отмена. Будет отдельный объект по энергосистеме базы. Метод будет получать инфу от туда
@@ -459,7 +388,6 @@ namespace Script9
                 CurrentAlarms.Clear();
                 if (Detect_warheads()) CurrentAlarms.Add(new Alarm("БОЕГОЛОВКА", "БАЗА", "Weapon31"));
                 if (Enemy_detected()) CurrentAlarms.Add(new Alarm("ВРАГИ В РАДИУСЕ\nПОРАЖЕНИЯ", "БАЗА", "SoundBlockEnemyDetected"));
-
                 return CurrentAlarms.Count > 0;
             }
         }
@@ -488,24 +416,37 @@ namespace Script9
                 _program.GridTerminalSystem.GetBlocksOfType(_oxygen_tanks, tank => _oxygen_tanks_subtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(reference_block));
             }
 
-            public float GetBatteryStoredPower()
+            public int HydrogenTanksLevel => GetTanksLevel(_hydrogen_tanks);
+            public int OxygenTanksLevel => GetTanksLevel(_oxygen_tanks);
+            public double HydrogenTanksCurrentVolume => GetTanksCurrentVolume(_hydrogen_tanks);
+            public double HydrogenTanksMaxVolume => GetTanksMaxVolume(_hydrogen_tanks);
+            public double OxygenTanksCurrentVolume => GetTanksCurrentVolume(_oxygen_tanks);
+            public double OxygenTanksMaxVolume => GetTanksMaxVolume(_oxygen_tanks);
+            public float BatteryStoredPower => GetBatteryStoredPower();
+            public float BatteryMaxStoredPower => GetBatteryMaxStoredPower();
+            public int BatteryLevel => GetBatteryLevel();
+            public int PowerLoad => GetPowerLoad();
+
+            public EnergyInfo GetEnergyInfo() => new EnergyInfo(BatteryLevel, HydrogenTanksLevel, OxygenTanksLevel, PowerLoad);
+
+            private float GetBatteryStoredPower()
             {
                 if (_batteries.Count == 0) return 0;
                 float current_stored_power = _batteries.Sum(battery => battery.CurrentStoredPower);
                 return current_stored_power;
             }
 
-            public float GetBatteryMaxStoredPower()
+            private float GetBatteryMaxStoredPower()
             {
                 if (_batteries.Count == 0) return 0;
                 float max_stored_power = _batteries.Sum(battery => battery.MaxStoredPower);
                 return max_stored_power;
             }
 
-            public int GetBatteryLevel()
+            private int GetBatteryLevel()
             {
                 if (_batteries.Count == 0) return 0;
-                int battery_in_percentage = (int)Math.Round(GetBatteryStoredPower() / GetBatteryMaxStoredPower() * 100, 0);
+                int battery_in_percentage = (int)Math.Round(BatteryStoredPower / BatteryMaxStoredPower * 100, 0);
                 return battery_in_percentage;
             }
 
@@ -530,26 +471,13 @@ namespace Script9
                 return max_volume;
             }
 
-
-            public int GetHydrogenTanksLevel() => GetTanksLevel(_hydrogen_tanks);
-            public int GetOxygenTanksLevel() => GetTanksLevel(_oxygen_tanks);
-
-            public double GetHydrogenTanksCurrentVolume() => GetTanksCurrentVolume(_hydrogen_tanks);
-            public double GetHydrogenTanksMaxVolume() => GetTanksMaxVolume(_hydrogen_tanks);
-
-            public double GetOxygenTanksCurrentVolume() => GetTanksCurrentVolume(_oxygen_tanks);
-            public double GetOxygenTanksMaxVolume() => GetTanksMaxVolume(_oxygen_tanks);
-
-            public int GetPowerLoad()
+            private int GetPowerLoad()
             {
                 if (_power_producers.Count == 0) return 0;
                 float current_output = _power_producers.Sum(producer => producer.CurrentOutput);
                 float max_output = _power_producers.Sum(producer => producer.MaxOutput);
                 return (int)Math.Round(current_output / max_output * 100, 2);
             }
-
-            public EnergyInfo GetEnergyInfo() => new EnergyInfo(GetBatteryLevel(), GetHydrogenTanksLevel(), GetOxygenTanksLevel(), GetPowerLoad());
-
         }
 
 
@@ -625,9 +553,7 @@ namespace Script9
 
             // Заглушка для интерфейса надо потом разнести
             // TODO: Убрать когда отпадет необходимость
-            public void Monitoring()
-            {
-            }
+            public void Monitoring() { }
         }
 
 

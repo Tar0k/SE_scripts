@@ -56,6 +56,9 @@
       <HintPath>C:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\VRage.Math.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="VRage.NativeWrapper">
+      <HintPath>C:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\VRage.NativeWrapper.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
