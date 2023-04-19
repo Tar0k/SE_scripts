@@ -60,7 +60,6 @@ namespace Script9
         internal class LightControl
         {
             readonly List<IMyLightingBlock> _lights = new List<IMyLightingBlock>();
-
             public LightControl(List<IMyLightingBlock> lights)
             {
                 _lights = lights;
@@ -140,7 +139,6 @@ namespace Script9
 
             // Проверить состояние ворот на откр. или закр. и т.д.
             public void CheckGate()
-
             {
                 Gate_state = "NA";
                 Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closing).Count == _gate_doors.Count ? "ЗАКРЫВАЮТСЯ" : Gate_state;
@@ -727,19 +725,13 @@ namespace Script9
             private static void ShowRoofState<T>(T display, List<IMyMotorAdvancedStator> hinges, string roof_state) where T : IMyTextSurface
             {
                 display.WriteText($"{roof_state}\n", false);
-                foreach (IMyMotorAdvancedStator hinge in hinges)
-                {
-                    display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true);
-                }
+                hinges.ForEach(hinge => display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true));
             }
 
             private static void ShowDoorState<T>(T display, List<IMyAirtightHangarDoor> doors, string door_state) where T : IMyTextSurface
             {
                 display.WriteText($"{door_state}\n", false);
-                foreach (IMyAirtightHangarDoor door in doors)
-                {
-                    display.WriteText($"{door.CustomName}: {door.Status}\n", true);
-                }
+                doors.ForEach(door => display.WriteText($"{door.CustomName}: {door.Status}\n", true));
             }
 
 
@@ -848,7 +840,6 @@ namespace Script9
                     break;
                 case UpdateType.Script:
                     // Выполняется по запросу от другого программируемого блока
-
                     switch (argument)
                     {
                         case "hangar1 toggle_door":
