@@ -1,28 +1,11 @@
 ﻿using System;
-using System.Text;
-using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 using VRageMath;
-using VRage.Game;
-using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Ingame;
-using Sandbox.Game.EntityComponents;
-using VRage.Game.Components;
-using VRage.Collections;
-using VRage.Game.ObjectBuilders.Definitions;
 using VRage.Game.ModAPI.Ingame;
 using SpaceEngineers.Game.ModAPI.Ingame;
 using VRage.Game.GUI.TextPanel;
-using VRage;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using Sandbox.Game.Lights;
-using System.ComponentModel.DataAnnotations;
-using System.Runtime.CompilerServices;
-using VRage.Voxels.Mesh;
-using VRage.Scripting;
-using System.Reflection;
-using System.Runtime.ExceptionServices;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Script9
 {
@@ -32,27 +15,28 @@ namespace Script9
         //------------START--------------
 
         #region Интерфейсы
-        interface ISector
+
+        private interface ISector
         {
-            string Sector_name { get; set; }
-            List<Alarm> Alarm_list { get; set; }
+            string SectorName { get; set; }
+            List<Alarm> AlarmList { get; set; }
             void Monitoring();
         }
 
-        interface IGate
+        private interface IGate
         {
             void OpenGate();
             void CloseGate();
             void ToggleGate();
-            string Gate_state { get; }
+            string GateState { get; }
         }
 
-        interface IRoof
+        private interface IRoof
         {
             void OpenRoof();
             void CloseRoof();
             void ToggleRoof();
-            string Roof_state { get; }
+            string RoofState { get; }
         }
         #endregion
 
@@ -105,26 +89,26 @@ namespace Script9
         // Класс управления воротами
         internal class GateControl : IGate
         {
-            public string Gate_state { get; set; }
-            private readonly List<IMyAirtightHangarDoor> _gate_doors = new List<IMyAirtightHangarDoor>();
+            public string GateState { get; set; }
+            private readonly List<IMyAirtightHangarDoor> _gateDoors = new List<IMyAirtightHangarDoor>();
 
             public GateControl(List<IMyAirtightHangarDoor> gateDoors)
             {
-                _gate_doors = gateDoors;
-                Gate_state = "NA";
+                _gateDoors = gateDoors;
+                GateState = "NA";
             }
 
             // Откр. ворота
-            public void OpenGate() => _gate_doors.ForEach(door => door.OpenDoor());
+            public void OpenGate() => _gateDoors.ForEach(door => door.OpenDoor());
 
             // Закр. ворота
-            public void CloseGate() => _gate_doors.ForEach(door => door.CloseDoor());
+            public void CloseGate() => _gateDoors.ForEach(door => door.CloseDoor());
 
 
             // Откр./Закр. ворота
             public void ToggleGate()
             {
-                switch (Gate_state)
+                switch (GateState)
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
@@ -140,39 +124,39 @@ namespace Script9
             // Проверить состояние ворот на откр. или закр. и т.д.
             public void CheckGate()
             {
-                Gate_state = "NA";
-                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closing).Count == _gate_doors.Count ? "ЗАКРЫВАЮТСЯ" : Gate_state;
-                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Opening).Count == _gate_doors.Count ? "ОТКРЫВАЮТСЯ" : Gate_state;
-                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Open).Count == _gate_doors.Count ? "ОТКРЫТО" : Gate_state;
-                Gate_state = _gate_doors.FindAll(door => door.Status == DoorStatus.Closed).Count == _gate_doors.Count ? "ЗАКРЫТО" : Gate_state;
+                GateState = "NA";
+                GateState = _gateDoors.FindAll(door => door.Status == DoorStatus.Closing).Count == _gateDoors.Count ? "ЗАКРЫВАЮТСЯ" : GateState;
+                GateState = _gateDoors.FindAll(door => door.Status == DoorStatus.Opening).Count == _gateDoors.Count ? "ОТКРЫВАЮТСЯ" : GateState;
+                GateState = _gateDoors.FindAll(door => door.Status == DoorStatus.Open).Count == _gateDoors.Count ? "ОТКРЫТО" : GateState;
+                GateState = _gateDoors.FindAll(door => door.Status == DoorStatus.Closed).Count == _gateDoors.Count ? "ЗАКРЫТО" : GateState;
             }
         }
 
         internal class RoofControl : IRoof
         {
-            public string Roof_state { get; set; }
-            private readonly List<IMyMotorAdvancedStator> _roof_hinges = new List<IMyMotorAdvancedStator>();
-            private readonly float _open_state; // Положение шарниров для состояния "ОТКРЫТО" в градусах
-            private readonly float _close_state; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
+            public string RoofState { get; set; }
+            private readonly List<IMyMotorAdvancedStator> _roofHinges = new List<IMyMotorAdvancedStator>();
+            private readonly float _openState; // Положение шарниров для состояния "ОТКРЫТО" в градусах
+            private readonly float _closeState; // Положение шарниров для состояния "ЗАКРЫТО" в градусах
 
             public RoofControl(List<IMyMotorAdvancedStator> roofHinges, float openState = 0f, float closeState = -90f)
             {
-                _roof_hinges = roofHinges;
-                _open_state = openState;
-                _close_state = closeState;
-                Roof_state = "NA";
+                _roofHinges = roofHinges;
+                _openState = openState;
+                _closeState = closeState;
+                RoofState = "NA";
             }
 
             // Открыть крышу
-            public void OpenRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _open_state ? 1 : 0);
+            public void OpenRoof() => _roofHinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _openState ? 1 : 0);
 
             // Закрыть крышу
-            public void CloseRoof() => _roof_hinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _close_state ? -1 : 0);
+            public void CloseRoof() => _roofHinges.ForEach(hinge => hinge.TargetVelocityRPM = Math.Round(RadToDeg(hinge.Angle), 0) != _closeState ? -1 : 0);
 
             // Откр./Закр. крышу
             public void ToggleRoof()
             {
-                switch (Roof_state)
+                switch (RoofState)
                 {
                     case "ОТКРЫТО":
                     case "ОТКРЫВАЮТСЯ":
@@ -188,11 +172,11 @@ namespace Script9
             // Проверить состояние крыши на откр. или закр. и т.д.
             public void CheckRoof()
             {
-                Roof_state = "NA";
-                Roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count == _roof_hinges.Count ? "ЗАКРЫВАЮТСЯ" : Roof_state;
-                Roof_state = _roof_hinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count == _roof_hinges.Count ? "ОТКРЫВАЮТСЯ" : Roof_state;
-                Roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _open_state).Count == _roof_hinges.Count ? "ОТКРЫТО" : Roof_state;
-                Roof_state = _roof_hinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _close_state).Count == _roof_hinges.Count ? "ЗАКРЫТО" : Roof_state;
+                RoofState = "NA";
+                RoofState = _roofHinges.FindAll(hinge => hinge.TargetVelocityRPM < 0f && hinge.Enabled).Count == _roofHinges.Count ? "ЗАКРЫВАЮТСЯ" : RoofState;
+                RoofState = _roofHinges.FindAll(hinge => hinge.TargetVelocityRPM > 0f && hinge.Enabled).Count == _roofHinges.Count ? "ОТКРЫВАЮТСЯ" : RoofState;
+                RoofState = _roofHinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _openState).Count == _roofHinges.Count ? "ОТКРЫТО" : RoofState;
+                RoofState = _roofHinges.FindAll(hinge => Math.Round(RadToDeg(hinge.Angle)) == _closeState).Count == _roofHinges.Count ? "ЗАКРЫТО" : RoofState;
             }
         }
 
@@ -230,114 +214,108 @@ namespace Script9
         // TODO: Добавить длительность сообщения в тиках.
         internal class Alarm
         {
-            readonly string alarm_text;
-            readonly string alarm_zone;
-            readonly string alarm_sound;
+            readonly string _alarmText;
+            readonly string _alarmZone;
+            readonly string _alarmSound;
 
             public Alarm(string alarmText, string alarmZone, string alarmSound)
             {
-                alarm_text = alarmText;
-                alarm_zone = alarmZone;
-                alarm_sound = alarmSound;
+                _alarmText = alarmText;
+                _alarmZone = alarmZone;
+                _alarmSound = alarmSound;
             }
-            public string Text => alarm_text;
-            public string Zone => alarm_zone;
-            public string Sound => alarm_sound;
+            public string Text => _alarmText;
+            public string Zone => _alarmZone;
+            public string Sound => _alarmSound;
         }
 
         internal class InventorySystem
         {
-            readonly Program _program;
-            readonly List<IMyTerminalBlock> _blocks_with_inventory = new List<IMyTerminalBlock>();
-            readonly List<IMyCargoContainer> _cargo_containers = new List<IMyCargoContainer>();
-            readonly List<IMyInventory> _all_inventories = new List<IMyInventory>();
-            readonly List<IMyInventory> _containers_inventories = new List<IMyInventory>();
+            private readonly Program _program;
+            private readonly List<IMyTerminalBlock> _blocksWithInventory = new List<IMyTerminalBlock>();
+            private readonly List<IMyCargoContainer> _cargoContainers = new List<IMyCargoContainer>();
+            private readonly List<IMyInventory> _allInventories = new List<IMyInventory>();
+            private readonly List<IMyInventory> _containersInventories = new List<IMyInventory>();
 
-            public InventorySystem(Program program, IMyTerminalBlock reference_block)
+            public InventorySystem(Program program, IMyTerminalBlock referenceBlock)
             {
                 _program = program;
-                _program.GridTerminalSystem.GetBlocksOfType(_blocks_with_inventory, block => block.IsSameConstructAs(reference_block) && block.HasInventory);
-                _cargo_containers = _blocks_with_inventory.OfType<IMyCargoContainer>().ToList();
-                _all_inventories = _blocks_with_inventory.Select(block => block.GetInventory()).ToList();
-                _containers_inventories = _cargo_containers.Select(block => block.GetInventory()).ToList();
+                _program.GridTerminalSystem.GetBlocksOfType(_blocksWithInventory, block => block.IsSameConstructAs(referenceBlock) && block.HasInventory);
+                _cargoContainers = _blocksWithInventory.OfType<IMyCargoContainer>().ToList();
+                _allInventories = _blocksWithInventory.Select(block => block.GetInventory()).ToList();
+                _containersInventories = _cargoContainers.Select(block => block.GetInventory()).ToList();
             }
 
-            public double CurrentVolumeTotal => SumCurrentVolumes(_all_inventories);
-            public double MaxVolumeTotal => SumMaxVolumes(_all_inventories);
+            public double CurrentVolumeTotal => SumCurrentVolumes(_allInventories);
+            public double MaxVolumeTotal => SumMaxVolumes(_allInventories);
             public int FilledRatioTotal => FilledRatio(CurrentVolumeTotal, MaxVolumeTotal);
-            public double CurrentVolumeCargo => SumCurrentVolumes(_containers_inventories);
-            public double MaxVolumeCargo => SumMaxVolumes(_containers_inventories);
+            public double CurrentVolumeCargo => SumCurrentVolumes(_containersInventories);
+            public double MaxVolumeCargo => SumMaxVolumes(_containersInventories);
             public int FilledRatioCargo => FilledRatio(CurrentVolumeCargo, MaxVolumeCargo);
 
             private static double SumCurrentVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.CurrentVolume.RawValue);
             private static double SumMaxVolumes(List<IMyInventory> inventories) => inventories.Sum(inventory => inventory.MaxVolume.RawValue);
-            private static int FilledRatio(double current_value, double max_value) => (int)Math.Round(current_value / max_value * 100, 2);
+            private static int FilledRatio(double currentValue, double maxValue) => (int)Math.Round(currentValue / maxValue * 100, 2);
         }
-
-
 
         //Класс инфы об корабле
         internal class ShipInfo
         //TODO: Посмотреть, есть ли упрощенная запись. Слишком длинно.
         {
-            readonly EnergySystem _ship_energy_system;
-            readonly InventorySystem _ship_inventory_system;
-            readonly string _ship_name;
+            readonly EnergySystem _shipEnergySystem;
+            readonly InventorySystem _shipInventorySystem;
+            readonly string _shipName;
 
-            public ShipInfo(Program program, IMyTerminalBlock reference_block)
+            public ShipInfo(Program program, IMyTerminalBlock referenceBlock)
             {
-                _ship_name = reference_block.CubeGrid.CustomName;
-                _ship_energy_system = new EnergySystem(program, reference_block);
-                _ship_inventory_system = new InventorySystem(program, reference_block);
+                _shipName = referenceBlock.CubeGrid.CustomName;
+                _shipEnergySystem = new EnergySystem(program, referenceBlock);
+                _shipInventorySystem = new InventorySystem(program, referenceBlock);
             }
 
-            public string ShipName => _ship_name;
-            public int BatteryLevel => _ship_energy_system.BatteryLevel;
-            public int HydrogenLevel => _ship_energy_system.HydrogenTanksLevel;
-            public int OxygenLevel => _ship_energy_system.OxygenTanksLevel;
-            public int CargoHoldTotalFilledRatio => _ship_inventory_system.FilledRatioTotal;
-            public int CargoHoldContainersFilledRatio => _ship_inventory_system.FilledRatioCargo;
+            public string ShipName => _shipName;
+            public int BatteryLevel => _shipEnergySystem.BatteryLevel;
+            public int HydrogenLevel => _shipEnergySystem.HydrogenTanksLevel;
+            public int OxygenLevel => _shipEnergySystem.OxygenTanksLevel;
+            public int CargoHoldTotalFilledRatio => _shipInventorySystem.FilledRatioTotal;
+            public int CargoHoldContainersFilledRatio => _shipInventorySystem.FilledRatioCargo;
 
         }
 
         //Класс инфы об подключенном корабле и коннекторе
         internal class ConnectedShipInfo
         {
-            readonly string connector_name;
-            readonly MyShipConnectorStatus connector_status;
-            readonly ShipInfo ship_info;
-
-            public ConnectedShipInfo(string ConnectorName, MyShipConnectorStatus ConnectorStatus, Program program, IMyTerminalBlock reference_block = null)
+            public ConnectedShipInfo(string connectorName, MyShipConnectorStatus connectorStatus, Program program, IMyTerminalBlock referenceBlock = null)
             {
-                connector_name = ConnectorName;
-                connector_status = ConnectorStatus;
-                if (reference_block != null) ship_info = new ShipInfo(program, reference_block);
+                ConnectorName = connectorName;
+                ConnectorStatus = connectorStatus;
+                if (referenceBlock != null) ShipInfo = new ShipInfo(program, referenceBlock);
             }
 
-            public string ConnectorName => connector_name;
-            public MyShipConnectorStatus ConnectorStatus => connector_status;
-            public ShipInfo ShipInfo => ship_info;
+            public string ConnectorName { get; }
+
+            public MyShipConnectorStatus ConnectorStatus { get; }
+
+            public ShipInfo ShipInfo { get; }
         }
 
         internal class EnergyInfo
         {
-            readonly int batteries_level;
-            readonly int hydrogen_level;
-            readonly int oxygen_level;
-            readonly int power_load;
-
-            public EnergyInfo(int BatteriesLevel, int HydrogenLevel, int OxygenLevel, int PowerLoad)
+            public EnergyInfo(int batteriesLevel, int hydrogenLevel, int oxygenLevel, int powerLoad)
             {
-                batteries_level = BatteriesLevel;
-                hydrogen_level = HydrogenLevel;
-                oxygen_level = OxygenLevel;
-                power_load = PowerLoad;
+                BatteriesLevel = batteriesLevel;
+                HydrogenLevel = hydrogenLevel;
+                OxygenLevel = oxygenLevel;
+                PowerLoad = powerLoad;
             }
 
-            public int BatteriesLevel => batteries_level;
-            public int HydrogenLevel => hydrogen_level;
-            public int OxygenLevel => oxygen_level;
-            public int PowerLoad => power_load;
+            public int BatteriesLevel { get; }
+
+            public int HydrogenLevel { get; }
+
+            public int OxygenLevel { get; }
+
+            public int PowerLoad { get; }
         }
 
         #endregion
@@ -355,28 +333,28 @@ namespace Script9
         // Класс системы определния тревог
         internal class AlarmSystem
         {
-            readonly Program _program;
-            readonly List<IMyWarhead> warheads = new List<IMyWarhead>();
-            readonly List<IMyLargeTurretBase> turrets = new List<IMyLargeTurretBase>();
-            bool warhead_detected;
+            private readonly Program _program;
+            private readonly List<IMyWarhead> _warheads = new List<IMyWarhead>();
+            private readonly List<IMyLargeTurretBase> _turrets = new List<IMyLargeTurretBase>();
+            bool _warheadDetected;
 
             internal AlarmSystem(Program program)
             {
                 _program = program;
-                _program.GridTerminalSystem.GetBlocksOfType(turrets, turret => turret.IsSameConstructAs(_program.Me));
+                _program.GridTerminalSystem.GetBlocksOfType(_turrets, turret => turret.IsSameConstructAs(_program.Me));
             }
 
             internal List<Alarm> CurrentAlarms { get; } = new List<Alarm>();
 
             private bool Detect_warheads()
             {
-                _program.GridTerminalSystem.GetBlocksOfType(warheads, warhead => warhead.IsSameConstructAs(_program.Me));
-                warhead_detected = warheads.Count > 0;
-                warheads.ForEach(warhead => warhead.IsArmed = false);
-                return warhead_detected;
+                _program.GridTerminalSystem.GetBlocksOfType(_warheads, warhead => warhead.IsSameConstructAs(_program.Me));
+                _warheadDetected = _warheads.Count > 0;
+                _warheads.ForEach(warhead => warhead.IsArmed = false);
+                return _warheadDetected;
             }
             // TODO: Метод на поднятие тревоги если у турелей цель (НЕ ПРОВЕРЕН до конца. Есть подозрение, что не работает из-за WeaponCore)
-            private bool Enemy_detected() => turrets.FindAll(turret => turret.HasTarget).Count > 0;
+            private bool Enemy_detected() => _turrets.FindAll(turret => turret.HasTarget).Count > 0;
 
             // TODO: Метод на поднятие тревоги если критически низкий уровень энергии на базе.
             // Отмена. Будет отдельный объект по энергосистеме базы. Метод будет получать инфу от туда
@@ -395,31 +373,31 @@ namespace Script9
 
         internal class EnergySystem
         {
-            readonly Program _program;
-            readonly List<IMyPowerProducer> _power_producers = new List<IMyPowerProducer>();
+            private readonly Program _program;
+            readonly List<IMyPowerProducer> _powerProducers = new List<IMyPowerProducer>();
             readonly List<IMyBatteryBlock> _batteries = new List<IMyBatteryBlock>();
-            readonly List<IMyTerminalBlock> _hydrogen_engines = new List<IMyTerminalBlock>();
-            readonly List<IMyGasTank> _hydrogen_tanks = new List<IMyGasTank>();
-            readonly List<IMyGasTank> _oxygen_tanks = new List<IMyGasTank>();
-            private readonly string[] _hydrogen_tanks_subtypes = { "LargeHydrogenTank", "LargeHydrogenTankIndustrial", "SmallHydrogenTankSmall", "LargeHydrogenTankSmall", "SmallHydrogenTank" };
-            private readonly string[] _oxygen_tanks_subtypes = { "", "OxygenTankSmall" };
+            readonly List<IMyTerminalBlock> _hydrogenEngines = new List<IMyTerminalBlock>();
+            readonly List<IMyGasTank> _hydrogenTanks = new List<IMyGasTank>();
+            readonly List<IMyGasTank> _oxygenTanks = new List<IMyGasTank>();
+            private readonly string[] _hydrogenTanksSubtypes = { "LargeHydrogenTank", "LargeHydrogenTankIndustrial", "SmallHydrogenTankSmall", "LargeHydrogenTankSmall", "SmallHydrogenTank" };
+            private readonly string[] _oxygenTanksSubtypes = { "", "OxygenTankSmall" };
 
-            public EnergySystem(Program program, IMyTerminalBlock reference_block)
+            public EnergySystem(Program program, IMyTerminalBlock referenceBlock)
             {
                 _program = program;
-                _program.GridTerminalSystem.GetBlocksOfType(_power_producers, producer => producer.IsSameConstructAs(reference_block));
-                _program.GridTerminalSystem.GetBlocksOfType(_batteries, battery => battery.IsSameConstructAs(reference_block));
-                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_engines, engine => engine.BlockDefinition.SubtypeName == "LargeHydrogenEngine" && engine.IsSameConstructAs(reference_block));
-                _program.GridTerminalSystem.GetBlocksOfType(_hydrogen_tanks, tank => _hydrogen_tanks_subtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(reference_block));
-                _program.GridTerminalSystem.GetBlocksOfType(_oxygen_tanks, tank => _oxygen_tanks_subtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(reference_block));
+                _program.GridTerminalSystem.GetBlocksOfType(_powerProducers, producer => producer.IsSameConstructAs(referenceBlock));
+                _program.GridTerminalSystem.GetBlocksOfType(_batteries, battery => battery.IsSameConstructAs(referenceBlock));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogenEngines, engine => engine.BlockDefinition.SubtypeName == "LargeHydrogenEngine" && engine.IsSameConstructAs(referenceBlock));
+                _program.GridTerminalSystem.GetBlocksOfType(_hydrogenTanks, tank => _hydrogenTanksSubtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(referenceBlock));
+                _program.GridTerminalSystem.GetBlocksOfType(_oxygenTanks, tank => _oxygenTanksSubtypes.Contains(tank.BlockDefinition.SubtypeName) && tank.IsSameConstructAs(referenceBlock));
             }
 
-            public int HydrogenTanksLevel => GetTanksLevel(_hydrogen_tanks);
-            public int OxygenTanksLevel => GetTanksLevel(_oxygen_tanks);
-            public double HydrogenTanksCurrentVolume => GetTanksCurrentVolume(_hydrogen_tanks);
-            public double HydrogenTanksMaxVolume => GetTanksMaxVolume(_hydrogen_tanks);
-            public double OxygenTanksCurrentVolume => GetTanksCurrentVolume(_oxygen_tanks);
-            public double OxygenTanksMaxVolume => GetTanksMaxVolume(_oxygen_tanks);
+            public int HydrogenTanksLevel => GetTanksLevel(_hydrogenTanks);
+            public int OxygenTanksLevel => GetTanksLevel(_oxygenTanks);
+            public double HydrogenTanksCurrentVolume => GetTanksCurrentVolume(_hydrogenTanks);
+            public double HydrogenTanksMaxVolume => GetTanksMaxVolume(_hydrogenTanks);
+            public double OxygenTanksCurrentVolume => GetTanksCurrentVolume(_oxygenTanks);
+            public double OxygenTanksMaxVolume => GetTanksMaxVolume(_oxygenTanks);
             public float BatteryStoredPower => GetBatteryStoredPower();
             public float BatteryMaxStoredPower => GetBatteryMaxStoredPower();
             public int BatteryLevel => GetBatteryLevel();
@@ -430,77 +408,78 @@ namespace Script9
             private float GetBatteryStoredPower()
             {
                 if (_batteries.Count == 0) return 0;
-                float current_stored_power = _batteries.Sum(battery => battery.CurrentStoredPower);
-                return current_stored_power;
+                float currentStoredPower = _batteries.Sum(battery => battery.CurrentStoredPower);
+                return currentStoredPower;
             }
 
             private float GetBatteryMaxStoredPower()
             {
                 if (_batteries.Count == 0) return 0;
-                float max_stored_power = _batteries.Sum(battery => battery.MaxStoredPower);
-                return max_stored_power;
+                float maxStoredPower;
+                maxStoredPower = _batteries.Sum(battery => battery.MaxStoredPower);
+                return maxStoredPower;
             }
 
             private int GetBatteryLevel()
             {
                 if (_batteries.Count == 0) return 0;
-                int battery_in_percentage = (int)Math.Round(BatteryStoredPower / BatteryMaxStoredPower * 100, 0);
-                return battery_in_percentage;
+                int batteryInPercentage = (int)Math.Round(BatteryStoredPower / BatteryMaxStoredPower * 100, 0);
+                return batteryInPercentage;
             }
 
             private static int GetTanksLevel<T>(List<T> tanks) where T : IMyGasTank
             {
                 if (tanks.Count == 0) return 0;
-                int filled_ratio = (int)Math.Round((tanks.Sum(tank => tank.FilledRatio)) / tanks.Count * 100, 2);
-                return filled_ratio;
+                int filledRatio = (int)Math.Round((tanks.Sum(tank => tank.FilledRatio)) / tanks.Count * 100, 2);
+                return filledRatio;
             }
 
             private static double GetTanksCurrentVolume<T>(List<T> tanks) where T : IMyGasTank
             {
                 if (tanks.Count == 0) return 0;
-                double current_volume = tanks.Sum(tank => tank.FilledRatio * tank.Capacity);
-                return current_volume;
+                double currentVolume = tanks.Sum(tank => tank.FilledRatio * tank.Capacity);
+                return currentVolume;
             }
 
             private static double GetTanksMaxVolume<T>(List<T> tanks) where T : IMyGasTank
             {
                 if (tanks.Count == 0) return 0;
-                double max_volume = tanks.Sum(tank => tank.Capacity);
-                return max_volume;
+                double maxVolume = tanks.Sum(tank => tank.Capacity);
+                return maxVolume;
             }
 
             private int GetPowerLoad()
             {
-                if (_power_producers.Count == 0) return 0;
-                float current_output = _power_producers.Sum(producer => producer.CurrentOutput);
-                float max_output = _power_producers.Sum(producer => producer.MaxOutput);
-                return (int)Math.Round(current_output / max_output * 100, 2);
+                if (_powerProducers.Count == 0) return 0;
+                float currentOutput = _powerProducers.Sum(producer => producer.CurrentOutput);
+                float maxOutput = _powerProducers.Sum(producer => producer.MaxOutput);
+                return (int)Math.Round(currentOutput / maxOutput * 100, 2);
             }
         }
 
 
         internal class ControlRoom : ISector
         {
-            readonly Program _program;
+            private readonly Program _program;
             readonly List<IMyTextPanel> _displays = new List<IMyTextPanel>();
-            readonly IMyBlockGroup control_room_group;
-            readonly List<IMyTextPanel> _hangar_displays = new List<IMyTextPanel>();
-            readonly List<IMyLightingBlock> _room_lights = new List<IMyLightingBlock>();
-            readonly IMyTextPanel _power_display;
+            private readonly IMyBlockGroup _controlRoomGroup;
+            readonly List<IMyTextPanel> _hangarDisplays = new List<IMyTextPanel>();
+            readonly List<IMyLightingBlock> _roomLights = new List<IMyLightingBlock>();
+            readonly IMyTextPanel _powerDisplay;
             internal LightControl Lights { get; }
-            public string Sector_name { get; set; }
-            public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
+            public string SectorName { get; set; }
+            public List<Alarm> AlarmList { get; set; } = new List<Alarm>();
 
             public ControlRoom(Program program, string controlRoomName)
             {
 
                 _program = program;
-                Sector_name = controlRoomName;
-                control_room_group = _program.GridTerminalSystem.GetBlockGroupWithName(controlRoomName);
-                control_room_group.GetBlocksOfType(_displays);
-                control_room_group.GetBlocksOfType(_room_lights);
+                SectorName = controlRoomName;
+                _controlRoomGroup = _program.GridTerminalSystem.GetBlockGroupWithName(controlRoomName);
+                _controlRoomGroup.GetBlocksOfType(_displays);
+                _controlRoomGroup.GetBlocksOfType(_roomLights);
 
-                Lights = new LightControl(_room_lights);
+                Lights = new LightControl(_roomLights);
 
                 //Пред. настройка дисплеев
                 foreach (IMyTextPanel display in _displays)
@@ -510,42 +489,42 @@ namespace Script9
                     display.TextPadding = 5;
                 }
 
-                _hangar_displays = _displays.Where(display => display.CustomData.Contains("hangar")).ToList();
-                _power_display = _displays.Find(display => display.CustomData.Contains("power"));
+                _hangarDisplays = _displays.Where(display => display.CustomData.Contains("hangar")).ToList();
+                _powerDisplay = _displays.Find(display => display.CustomData.Contains("power"));
             }
 
-            public void ShowEnergyStatus(EnergyInfo energy_info)
+            public void ShowEnergyStatus(EnergyInfo energyInfo)
             {
-                if (_power_display != null)
+                if (_powerDisplay != null)
                 {
                     string text = "";
-                    text += $"Батареи: {energy_info.BatteriesLevel}%\n";
-                    text += $"Водородные баки: {energy_info.HydrogenLevel}%\n";
-                    text += $"Кислородные баки: {energy_info.OxygenLevel}%\n";
-                    text += $"Нагрузка сети: {energy_info.PowerLoad}%\n";
-                    _power_display.WriteText(text, false);
+                    text += $"Батареи: {energyInfo.BatteriesLevel}%\n";
+                    text += $"Водородные баки: {energyInfo.HydrogenLevel}%\n";
+                    text += $"Кислородные баки: {energyInfo.OxygenLevel}%\n";
+                    text += $"Нагрузка сети: {energyInfo.PowerLoad}%\n";
+                    _powerDisplay.WriteText(text, false);
                 }
             }
 
             //Метод отображения на определенном ангарном дисплее инфы об коннекторах ангара
-            public void ShowHangarConnectorInfo(string hangarName, int display_index, Dictionary<long, ConnectedShipInfo> connectors_info)
+            public void ShowHangarConnectorInfo(string hangarName, int displayIndex, Dictionary<long, ConnectedShipInfo> connectorsInfo)
             {
-                if (display_index < _hangar_displays.Count)
+                if (displayIndex < _hangarDisplays.Count)
                 {
                     string text = $"{hangarName}\n";
-                    foreach (var connector_info in connectors_info)
+                    foreach (var connectorInfo in connectorsInfo)
                     {
                         text += "-----------------------------------------------------\n";
-                        text += $"{connector_info.Value.ConnectorName}: {connector_info.Value.ConnectorStatus}\n";
-                        if (connector_info.Value.ConnectorStatus == MyShipConnectorStatus.Connected)
+                        text += $"{connectorInfo.Value.ConnectorName}: {connectorInfo.Value.ConnectorStatus}\n";
+                        if (connectorInfo.Value.ConnectorStatus == MyShipConnectorStatus.Connected)
                         {
 
-                            text += $"{connector_info.Value.ShipInfo.ShipName}\n";
-                            text += $"ТРЮМ: {connector_info.Value.ShipInfo.CargoHoldTotalFilledRatio}% ";
-                            text += $"БАТАРЕИ: {connector_info.Value.ShipInfo.BatteryLevel}%\n";
+                            text += $"{connectorInfo.Value.ShipInfo.ShipName}\n";
+                            text += $"ТРЮМ: {connectorInfo.Value.ShipInfo.CargoHoldTotalFilledRatio}% ";
+                            text += $"БАТАРЕИ: {connectorInfo.Value.ShipInfo.BatteryLevel}%\n";
                         }
                     }
-                    _hangar_displays[display_index].WriteText(text, false);
+                    _hangarDisplays[displayIndex].WriteText(text, false);
                 }
             }
 
@@ -561,49 +540,49 @@ namespace Script9
              * Выполняет управление и мониторинг состояния блоков
              */
             readonly Program _program;
-            readonly List<IMyLightingBlock> hangar_lights = new List<IMyLightingBlock>();
-            readonly List<IMyMotorAdvancedStator> hangar_hinges = new List<IMyMotorAdvancedStator>();
-            readonly List<IMyTextPanel> hangar_displays = new List<IMyTextPanel>();
-            readonly List<IMyAirtightHangarDoor> hangar_doors = new List<IMyAirtightHangarDoor>();
-            readonly List<IMySoundBlock> hangar_speakers = new List<IMySoundBlock>();
-            readonly List<IMyShipConnector> hangar_connectors = new List<IMyShipConnector>();
-            public List<Alarm> Alarm_list { get; set; } = new List<Alarm>();
+            private readonly List<IMyLightingBlock> _hangarLights = new List<IMyLightingBlock>();
+            private readonly List<IMyMotorAdvancedStator> _hangarHinges = new List<IMyMotorAdvancedStator>();
+            private readonly List<IMyTextPanel> _hangarDisplays = new List<IMyTextPanel>();
+            private readonly List<IMyAirtightHangarDoor> _hangarDoors = new List<IMyAirtightHangarDoor>();
+            private readonly List<IMySoundBlock> _hangarSpeakers = new List<IMySoundBlock>();
+            private readonly List<IMyShipConnector> _hangarConnectors = new List<IMyShipConnector>();
+            public List<Alarm> AlarmList { get; set; } = new List<Alarm>();
             public IMyTextSurface PlcScreen1 { get; }
-            public string Sector_name { get; set; }
-            int _mem_alarm_number;
-            readonly bool _has_door;
-            readonly bool _has_roof;
-            int _alarm_timer;
-            int _alarm_message_duration;
+            public string SectorName { get; set; }
+            int _memAlarmNumber;
+            readonly bool _hasDoor;
+            readonly bool _hasRoof;
+            int _alarmTimer;
+            int _alarmMessageDuration;
             internal GateControl Gate1 { get; }
             internal RoofControl Roof1 { get; }
             internal LightControl Lights { get; }
             public DisplayControl Screens { get; }
-            readonly IMyBlockGroup hangar_group;
+            private readonly IMyBlockGroup _hangarGroup;
 
 
             public HangarControl(Program program, string hangarName, float openState = 0f, float closeState = -90f, bool hasDoor = false, bool hasRoof = false)
             {
                 _program = program; //Ссылка на основную программу для возможности использовать GridTerminalSystem
-                Sector_name = hangarName; // Имя группы устройств в ангаре, например "Ангар 1".
-                _has_door = hasDoor; // Идентификатор наличия ворот
-                _has_roof = hasRoof;  // Идентификатор наличия крыши
+                SectorName = hangarName; // Имя группы устройств в ангаре, например "Ангар 1".
+                _hasDoor = hasDoor; // Идентификатор наличия ворот
+                _hasRoof = hasRoof;  // Идентификатор наличия крыши
                 PlcScreen1 = _program.Me.GetSurface(0); // Экран на программируемом блоке
 
 
                 //Распределение блоков по типам в соответствующие списки
-                hangar_group = _program.GridTerminalSystem.GetBlockGroupWithName(Sector_name);
-                hangar_group.GetBlocksOfType(hangar_lights);
-                hangar_group.GetBlocksOfType(hangar_hinges);
-                hangar_group.GetBlocksOfType(hangar_doors);
-                hangar_group.GetBlocksOfType(hangar_displays);
-                hangar_group.GetBlocksOfType(hangar_speakers);
-                hangar_group.GetBlocksOfType(hangar_connectors);
+                _hangarGroup = _program.GridTerminalSystem.GetBlockGroupWithName(SectorName);
+                _hangarGroup.GetBlocksOfType(_hangarLights);
+                _hangarGroup.GetBlocksOfType(_hangarHinges);
+                _hangarGroup.GetBlocksOfType(_hangarDoors);
+                _hangarGroup.GetBlocksOfType(_hangarDisplays);
+                _hangarGroup.GetBlocksOfType(_hangarSpeakers);
+                _hangarGroup.GetBlocksOfType(_hangarConnectors);
 
-                if (hasRoof) Roof1 = new RoofControl(hangar_hinges, openState, closeState);
-                if (hasDoor) Gate1 = new GateControl(hangar_doors);
-                Lights = new LightControl(hangar_lights);
-                Screens = new DisplayControl(hangar_displays);
+                if (hasRoof) Roof1 = new RoofControl(_hangarHinges, openState, closeState);
+                if (hasDoor) Gate1 = new GateControl(_hangarDoors);
+                Lights = new LightControl(_hangarLights);
+                Screens = new DisplayControl(_hangarDisplays);
 
                 // Первая операция контроля
                 Monitoring();
@@ -613,7 +592,7 @@ namespace Script9
             // TODO: Подумать как упростить
             {
                 Dictionary<long, ConnectedShipInfo> connectors_info = new Dictionary<long, ConnectedShipInfo>();
-                foreach (IMyShipConnector connector in hangar_connectors)
+                foreach (IMyShipConnector connector in _hangarConnectors)
                 {
                     if (connector.Status == MyShipConnectorStatus.Connected)
                     {
@@ -635,23 +614,23 @@ namespace Script9
                 switch (blockState)
                 {
                     case "ОТКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{SectorName}\n{blockName}\n ОТКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ЗАКРЫВАЮТСЯ":
-                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
+                        Screens.UpdateDisplays($"{SectorName}\n{blockName}\n ЗАКРЫВАЮТСЯ", Color.Yellow, Color.Black);
                         Lights.UpdateLights(Color.Yellow, true);
                         break;
                     case "ОТКРЫТО":
-                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ОТКРЫТЫ", Color.Green, Color.White);
+                        Screens.UpdateDisplays($"{SectorName}\n{blockName}\n ОТКРЫТЫ", Color.Green, Color.White);
                         Lights.UpdateLights(Color.Green, false);
                         break;
                     case "ЗАКРЫТО":
-                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n ЗАКРЫТЫ", Color.Black, Color.White);
+                        Screens.UpdateDisplays($"{SectorName}\n{blockName}\n ЗАКРЫТЫ", Color.Black, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                     default:
-                        Screens.UpdateDisplays($"{Sector_name}\n{blockName}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
+                        Screens.UpdateDisplays($"{SectorName}\n{blockName}\n НЕ ОПРЕДЕЛЕНО", Color.Orange, Color.White);
                         Lights.UpdateLights(Color.White, false);
                         break;
                 };
@@ -664,42 +643,42 @@ namespace Script9
             // TODO: Добавить возможность задавать длительнось сообщения тревоги динамически, а не фиксировано как сейчас.
             // TODO: Вынести всю обработку тревоги в отдельный класс
             {
-                string alarm_text = Alarm_list[0].Text;
-                string sound = Alarm_list[0].Sound;
+                string alarm_text = AlarmList[0].Text;
+                string sound = AlarmList[0].Sound;
                 Screens.UpdateDisplays($"!!!ВНИМАНИЕ!!!\n{alarm_text}", Color.Red, Color.White);
                 Lights.UpdateLights(Color.Red, true);
 
                 // Первый запуск тревоги
-                if (_mem_alarm_number == 0)
+                if (_memAlarmNumber == 0)
                 {
 
-                    foreach (IMySoundBlock speaker in hangar_speakers)
+                    foreach (IMySoundBlock speaker in _hangarSpeakers)
                     {
                         speaker.SelectedSound = sound;
                         speaker.LoopPeriod = 3;
                         speaker.Play();
                     }
                 }
-                _alarm_timer += 1; // Тик в 1.5 сек
+                _alarmTimer += 1; // Тик в 1.5 сек
 
                 // Раз в 10 тиков. Описание тревоги
-                if (_alarm_timer % 10 == 0)
+                if (_alarmTimer % 10 == 0)
                 {
-                    foreach (IMySoundBlock speaker in hangar_speakers)
+                    foreach (IMySoundBlock speaker in _hangarSpeakers)
                     {
                         speaker.Stop();
                         speaker.SelectedSound = sound;
                         speaker.LoopPeriod = 60;
                         speaker.Play();
                     }
-                    _alarm_message_duration = 0;
+                    _alarmMessageDuration = 0;
                 }
                 // Пищалка тревоги
-                else if (_mem_alarm_number != 0)
+                else if (_memAlarmNumber != 0)
                 {
-                    if (_alarm_message_duration > 1)
+                    if (_alarmMessageDuration > 1)
                     {
-                        foreach (IMySoundBlock speaker in hangar_speakers)
+                        foreach (IMySoundBlock speaker in _hangarSpeakers)
                         {
                             if (speaker.SelectedSound == sound || speaker.SelectedSound == "Arc" + sound)
                             {
@@ -710,7 +689,7 @@ namespace Script9
                         }
                         
                     }
-                    else _alarm_message_duration += 1;
+                    else _alarmMessageDuration += 1;
                 }
             }
 
@@ -718,19 +697,19 @@ namespace Script9
             public void DisableAlarm()
 
             {
-                _alarm_timer = 0;
-                hangar_speakers.ForEach(speaker => speaker.Stop());
+                _alarmTimer = 0;
+                _hangarSpeakers.ForEach(speaker => speaker.Stop());
             }
 
-            private static void ShowRoofState<T>(T display, List<IMyMotorAdvancedStator> hinges, string roof_state) where T : IMyTextSurface
+            private static void ShowRoofState<T>(T display, List<IMyMotorAdvancedStator> hinges, string roofState) where T : IMyTextSurface
             {
-                display.WriteText($"{roof_state}\n", false);
+                display.WriteText($"{roofState}\n", false);
                 hinges.ForEach(hinge => display.WriteText($"{hinge.CustomName}: {Math.Round(RadToDeg(hinge.Angle), 0)}\n", true));
             }
 
-            private static void ShowDoorState<T>(T display, List<IMyAirtightHangarDoor> doors, string door_state) where T : IMyTextSurface
+            private static void ShowDoorState<T>(T display, List<IMyAirtightHangarDoor> doors, string doorState) where T : IMyTextSurface
             {
-                display.WriteText($"{door_state}\n", false);
+                display.WriteText($"{doorState}\n", false);
                 doors.ForEach(door => display.WriteText($"{door.CustomName}: {door.Status}\n", true));
             }
 
@@ -740,8 +719,8 @@ namespace Script9
             {
                 if (display != null)
                 {
-                    if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
-                    else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                    if (_hasRoof) ShowRoofState(display, _hangarHinges, Roof1.RoofState);
+                    else if (_hasDoor) ShowDoorState(display, _hangarDoors, Gate1.GateState);
                 }
             }
 
@@ -750,8 +729,8 @@ namespace Script9
             {
                 if (display != null)
                 {
-                    if (_has_roof) ShowRoofState(display, hangar_hinges, Roof1.Roof_state);
-                    else if (_has_door) ShowDoorState(display, hangar_doors, Gate1.Gate_state);
+                    if (_hasRoof) ShowRoofState(display, _hangarHinges, Roof1.RoofState);
+                    else if (_hasDoor) ShowDoorState(display, _hangarDoors, Gate1.GateState);
                 }
             }
 
@@ -761,45 +740,45 @@ namespace Script9
             {
                 Roof1?.CheckRoof();
                 Gate1?.CheckGate();
-                if (Alarm_list.Count > 0)
+                if (AlarmList.Count > 0)
                 {
                     ShowAlarm();
                 }
                 else
                 {
-                    if (Roof1 != null) ShowStatus(Roof1.Roof_state, "СТВОРКИ");
-                    else if (Gate1 != null) ShowStatus(Gate1.Gate_state, "ВОРОТА");
+                    if (Roof1 != null) ShowStatus(Roof1.RoofState, "СТВОРКИ");
+                    else if (Gate1 != null) ShowStatus(Gate1.GateState, "ВОРОТА");
                 }
 
-                if (Alarm_list.Count == 0 && _mem_alarm_number != 0) DisableAlarm();
-                _mem_alarm_number = Alarm_list.Count;
+                if (AlarmList.Count == 0 && _memAlarmNumber != 0) DisableAlarm();
+                _memAlarmNumber = AlarmList.Count;
             }
         }
 
-        readonly Dictionary<string, ISector> sectors = new Dictionary<string, ISector>();
-        private readonly HangarControl Hangar1;
-        private readonly HangarControl Hangar2;
-        private readonly HangarControl Hangar3;
-        private readonly HangarControl Production;
-        private readonly AlarmSystem alarm_system;
-        private readonly ControlRoom control_room;
-        private readonly EnergySystem Energy;
+        readonly Dictionary<string, ISector> _sectors = new Dictionary<string, ISector>();
+        private readonly HangarControl _hangar1;
+        private readonly HangarControl _hangar2;
+        private readonly HangarControl _hangar3;
+        private readonly HangarControl _production;
+        private readonly AlarmSystem _alarmSystem;
+        private readonly ControlRoom _controlRoom;
+        private readonly EnergySystem _energy;
 
         public Program()
         {
-            control_room = new ControlRoom(this, "ЦУП");
-            Hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
-            Hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
-            Hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
-            Production = new HangarControl(this, "Производство");
-            Energy = new EnergySystem(this, Me);
-            sectors.Add("hangar1", Hangar1);
-            sectors.Add("hangar2", Hangar2);
-            sectors.Add("hangar3", Hangar3);
-            sectors.Add("production", Production);
-            sectors.Add("control room", control_room);
+            _controlRoom = new ControlRoom(this, "ЦУП");
+            _hangar1 = new HangarControl(this, "Ангар 1", hasDoor: true);
+            _hangar2 = new HangarControl(this, "Ангар 2", hasDoor: true, hasRoof: true);
+            _hangar3 = new HangarControl(this, "Ангар 3", hasDoor: true);
+            _production = new HangarControl(this, "Производство");
+            _energy = new EnergySystem(this, Me);
+            _sectors.Add("hangar1", _hangar1);
+            _sectors.Add("hangar2", _hangar2);
+            _sectors.Add("hangar3", _hangar3);
+            _sectors.Add("production", _production);
+            _sectors.Add("control room", _controlRoom);
 
-            alarm_system = new AlarmSystem(this);
+            _alarmSystem = new AlarmSystem(this);
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
         }
 
@@ -810,29 +789,29 @@ namespace Script9
                 case UpdateType.Update100:
                     //Выполняется каждые 1.5 сек
                     // TODO: Разобраться почему не работает запись формата "sectors.Values.ForEach(sector => sector.Monitoring());", а работает стандартный foreach цикл
-                    if (alarm_system.DetectAlarms())
+                    if (_alarmSystem.DetectAlarms())
                     {
-                        foreach (ISector sector in sectors.Values)
+                        foreach (ISector sector in _sectors.Values)
                         //TODO: Понять почему нужно преобразование ToList и откуда вообще берется IEnumerable
                         {
-                            sector.Alarm_list = alarm_system.CurrentAlarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.Sector_name).ToList();
+                            sector.AlarmList = _alarmSystem.CurrentAlarms.Where(alarm => alarm.Zone == "БАЗА" || alarm.Zone == sector.SectorName).ToList();
                         }
                     }
                     else
                     {
-                        foreach (ISector sector in sectors.Values)
+                        foreach (ISector sector in _sectors.Values)
                         {
-                            sector.Alarm_list.Clear();
+                            sector.AlarmList.Clear();
                         }
                     }
-                    foreach (ISector sector in sectors.Values)
+                    foreach (ISector sector in _sectors.Values)
                     {
                         sector.Monitoring();
                     }
-                    control_room.ShowHangarConnectorInfo("Ангар 1", 0, Hangar1.GetConnectorsInfo());
-                    control_room.ShowHangarConnectorInfo("Ангар 2", 1, Hangar2.GetConnectorsInfo());
-                    control_room.ShowHangarConnectorInfo("Ангар 3", 2, Hangar3.GetConnectorsInfo());
-                    control_room.ShowEnergyStatus(Energy.GetEnergyInfo());
+                    _controlRoom.ShowHangarConnectorInfo("Ангар 1", 0, _hangar1.GetConnectorsInfo());
+                    _controlRoom.ShowHangarConnectorInfo("Ангар 2", 1, _hangar2.GetConnectorsInfo());
+                    _controlRoom.ShowHangarConnectorInfo("Ангар 3", 2, _hangar3.GetConnectorsInfo());
+                    _controlRoom.ShowEnergyStatus(_energy.GetEnergyInfo());
                     break;
 
                 case UpdateType.Terminal:
@@ -843,34 +822,34 @@ namespace Script9
                     switch (argument)
                     {
                         case "hangar1 toggle_door":
-                            Hangar1.Gate1.ToggleGate();
+                            _hangar1.Gate1.ToggleGate();
                             break;
                         case "hangar1 toggle_light":
-                            Hangar1.Lights.ToggleLights();
+                            _hangar1.Lights.ToggleLights();
                             break;
                         case "hangar1 toggle_roof":
-                            Hangar1.Roof1.ToggleRoof();
+                            _hangar1.Roof1.ToggleRoof();
                             break;
                         case "hangar2 toggle_door":
-                            Hangar2.Gate1.ToggleGate();
+                            _hangar2.Gate1.ToggleGate();
                             break;
                         case "hangar2 toggle_light":
-                            Hangar2.Lights.ToggleLights();
+                            _hangar2.Lights.ToggleLights();
                             break;
                         case "hangar2 toggle_roof":
-                            Hangar2.Roof1.ToggleRoof();
+                            _hangar2.Roof1.ToggleRoof();
                             break;
                         case "hangar3 toggle_door":
-                            Hangar3.Gate1.ToggleGate();
+                            _hangar3.Gate1.ToggleGate();
                             break;
                         case "hangar3 toggle_light":
-                            Hangar3.Lights.ToggleLights();
+                            _hangar3.Lights.ToggleLights();
                             break;
                         case "hangar3 toggle_roof":
-                            Hangar3.Roof1.ToggleRoof();
+                            _hangar3.Roof1.ToggleRoof();
                             break;
                         case "control_room toggle_light":
-                            control_room.Lights.ToggleLights();
+                            _controlRoom.Lights.ToggleLights();
                             break;
                     }
                     break;

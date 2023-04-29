@@ -6,6 +6,7 @@
     <Nullable>disable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
     <AnalysisLevel>6.0-all</AnalysisLevel>
+    <LangVersion>6</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
